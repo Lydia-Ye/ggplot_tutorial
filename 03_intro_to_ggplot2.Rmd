@@ -1,0 +1,591 @@
+--- 
+title: "Introduction to Data Visualization with `ggplot2`"
+output:
+  html_document:
+    toc: yes
+    toc_float:
+      collapsed: yes
+      smooth_scroll: no
+  # pdf_document:
+  #   toc: yes
+  # word_document:
+  #   toc: yes
+runtime: shiny_prerendered
+description: >
+  
+---
+
+```{r setup, include=FALSE}
+library(learnr)
+library(ggplot2)
+library(mosaic)
+
+ALL_AS_EXERCISE = TRUE  # switch between interactive online activities (true means interactive)
+EVAL_HO_BLOCKS  = FALSE # code that only executes in student handouts
+FIG_HEIGHT = 2
+
+# The csv file should be imported into RStudio:
+AmesHousingFull <- read.csv("~/Downloads/ameshouse/AmesHousing.csv")
+#AmesHousingFull <- read.csv("data/AmesHousing.csv")
+AmesHousingFull$KitchenQuality <- 
+      ifelse(AmesHousingFull$KitchenQual == "Ex","Excellent", 
+      ifelse(AmesHousingFull$KitchenQual == "Gd", "Good",
+      ifelse(AmesHousingFull$KitchenQual == "TA","Average",
+      ifelse(AmesHousingFull$KitchenQual == "Fa", "Fair", "Poor")))) 
+
+# AmesHousingFull$Fireplaces <- as.factor(AmesHousingFull$Fireplaces)
+AmesHousing <- select(AmesHousingFull, SalePrice, GrLivArea, Fireplaces, KitchenQuality)
+
+# # Needed Cleaning 
+# AmesHousing2 <- AmesHousing %>%
+#   filter(Fireplaces < 3) %>%
+#   filter(KitchenQuality != "Poor")
+# 
+# AmesHousing2 <-mutate(AmesHousing2,Fireplace2=as.factor(Fireplaces))
+colleges <- read.csv("https://remiller1450.github.io/data/Colleges2019.csv")
+```
+
+This online tutorial is designed to introduce you to data visualization and how to create high quality graphics using the `ggplot2` package.
+
+<!-- START_QUESTION -->
+## Packages and Datasets
+
+
+You will need the following packages to complete this tutorial:
+
+```{r load_packages, eval = EVAL_HO_BLOCKS}
+# install.packages("ggplot2")
+library(ggplot2)
+```
+
+You will also need the following datasets:
+
+```{r load_datasets, eval = EVAL_HO_BLOCKS}
+colleges <- read.csv("https://remiller1450.github.io/data/Colleges2019.csv")
+```
+<!-- END_QUESTION -->
+
+**Note:** In this tutorial we will use "cleaned data"; you will learn how to manipulate data prior to graphing in subsequent tutorials.
+
+## Introduction
+
+This tutorial will focus on creating graphs to effectively communicate key patterns within a dataset. While many software packages allow the user to make basic plots, it can be challenging to create plots that are customized to address a specific idea. There are numerous ways to create graphs, however this tutorial will focus on the `R` package `ggplot2`, created by Hadley Wickham.
+
+The key function used in `ggplot2` is `ggplot()` (the *grammar of graphics plot*). This function is different from other graphics functions because it uses a particular grammar inspired by Leland Wilkinson's landmark book, *The Grammar of Graphics*, that focused on thinking about, reasoning with and communicating with graphics. It enables layering of independent components to create custom graphics.
+
+**Data**: In this tutorial, we will use the [AmesHousing](http://www.amstat.org/publications/jse/v19n3/decock.pdf) (FIXME: this link is broken) data, which provides information on the sales of individual residential properties in Ames, Iowa from 2006 to 2010. The data set contains 2930 observations, and a large number of explanatory variables involved in assessing home values. A full description of this dataset can be found [here](https://cran.r-project.org/web/packages/AmesHousing/AmesHousing.pdf).
+
+To start, we've paired down the dataset to focus on just a few variables:
+
+ * `SalePrice`: The sale price of the home
+ * `GrLivArea`: The above ground living area in the home (in square feet)
+ * `Fireplaces`: The number of fireplaces in the home
+ * `KitchenQuality`: The quality rating of the kitchen (Excellent, Good, Average, Fair, or Poor)
+ 
+Run the following code to get a peak of the AmesHousing data:
+
+```{r display_data, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE}
+# The code below uses the head() function to view the first four lines of the AmesHousing data.
+head(AmesHousing, 4)
+```
+
+## Overview of the `ggplot2` Framework
+
+### Terminology
+
+The `ggplot2` framework is unique because all graphics are grammatically defined using the following terminology:
+ * **Geometric Elements** (or "**geom**"): this determines the type of geometric shape used to display the data (i.e. lines, bars, points, areas, etc.)
+ * **Aesthetics** (or "**aes**"): this determines how variables in the data are mapped to visual properties of **geom**s (i.e. $x$ position, $y$ position, color, shape, fill, size, etc.)
+ * **Scales**: guidelines for how aesthetic mappings should be displayed (i.e. logarithmic $x$-axis, red to blue color palate, etc.)
+ * **Guides** (or "legends"): references to help a human reader interpret the aesthetics
+ * **Facets**: rules specifying how to break up and separately display subsets of data
+
+### The Structure of the `ggplot` Function
+
+All `ggplot` functions must have at least three components:
+ * **data**: specifies what to plot; this could be via the inclusion of a data frame, or explicitly specified as needed,
+ * **geom**: specifies what type of plot, and
+ * **aes**: specifies how to plot the data.
+
+Thus the structure of a graphic made with `ggplot()` could have the following form:
+
+<h4 style = "text-align: center;" markdown = "1"> ggplot(data = , mapping = aes(x = , y = )) + geom_***() </h4>
+
+In the following histogram we use `SalePrice` as the $x$ variable:
+
+```{r example_hist_1, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, message = FALSE}
+ggplot(data = AmesHousing, mapping = aes(x = SalePrice)) + geom_histogram()
+```
+
+In the above code, the terms `data =` and `mapping =` are not required (nor is `x =` since it is a one variable plot), but are used for clarification. For example, the following code will produce the same result:
+
+```{r example_hist_2, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, message = FALSE}
+ggplot(AmesHousing, aes(SalePrice)) + geom_histogram()
+```
+
+**Note:** The terms `data =` and `mapping =` are not required if and only if both are supplied in the appropriate order; the first and second arguments are always presumed to be `data` and `mapping`, respectively (unless otherwise specified).
+
+### How `ggplot2` Creates Graphics
+
+The `ggplot2` package builds graphics in a structured manner using layers. Layers are sequentially added to a graph, with each serving a particular purpose, such as:
+1. Displaying raw data
+2. Displaying a statistical summary
+3. Adding metadata (i.e. annotations, context, references, etc.)
+
+Consider the following examples:
+
+#### Example 1.1a - nothing (just a base layer)
+
+```{r example_base_layer_1_1, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+ggplot()
+```
+
+#### Example 1.1b - again a base layer, but now with specified data and axes
+
+```{r example_base_layer_1_2, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+ggplot(data = AmesHousing, mapping = aes(x = GrLivArea, y = SalePrice))
+```
+
+#### Example 1.2 - add a layer displaying raw data, here as a scatter plot with "points"
+
+```{r example_add_layer_1, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+ggplot(data = AmesHousing, mapping = aes(x = GrLivArea, y = SalePrice)) +
+  geom_point()
+```
+
+Notice the addition of the "+" sign after the first line, this indicates that an additional layer will follow.
+
+#### Example 1.3 - add another layer (a smooth fit)
+
+```{r example_add_layer_2, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+ggplot(data = AmesHousing, mapping = aes(x = GrLivArea, y = SalePrice)) +
+  geom_point() +
+  geom_smooth()
+```
+
+#### Example 1.4 - add another layer (reference text)
+
+```{r example_add_layer_3, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+ggplot(data = AmesHousing, mapping = aes(x = GrLivArea, y = SalePrice)) +
+  geom_point() +
+  geom_smooth() +
+  annotate("text", x = 5000, y = 600000, label = "Data from 2006 to 2010")
+```
+
+**Note:** A high-quality graphic doesn't require any particular number of layers. In fact, more layers can sometimes detract from the clarity of a data visualization.
+
+### More on the Base Layer
+
+The data and mapping arguments provided in the base layer are carried forward to all subsequent layers (which is often desirable). However, we can avoid this behavior in a variety of ways:
+
+#### Example 2.1 - distinguishing data points by kitchen quality with a color aesthetic
+
+```{r example_more_base_layer_1, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+ggplot(data = AmesHousing, mapping = aes(x = GrLivArea, y = SalePrice, color = KitchenQuality)) +
+  geom_point()
+```
+
+#### Example 2.2 - a local override of the color aesthetic
+
+```{r example_more_base_layer_2, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+ggplot(data = AmesHousing, mapping = aes(x = GrLivArea, y = SalePrice, color = KitchenQuality)) +
+  geom_point(color = "red")
+```
+
+#### Example 2.3 - specifying aesthetics locally within layers
+
+```{r example_more_base_layer_3, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+ggplot(data = AmesHousing) +
+  geom_point( mapping = aes(x = GrLivArea, y = SalePrice, color = KitchenQuality)) +
+  geom_smooth(mapping = aes(x = GrLivArea, y = SalePrice, color = KitchenQuality))
+```
+
+Local aesthetic specification is most useful when you want to add layers that involve the same parameters ("$x$" and "$y$") but for different things. Common examples are drawing a line through several different group means of an ordinal categorical variable, or displaying both polygons and points on a map.
+
+#### Example 2.4 - specifying data locally within layers
+
+```{r example_more_base_layer_4, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+ggplot(mapping = aes(x = GrLivArea, y = SalePrice)) +
+  geom_point(data = subset(AmesHousing, KitchenQuality == "Excellent"), color = "red") +
+  geom_point(data = subset(AmesHousing, KitchenQuality == "Average"),   color = "blue")
+```
+
+Local data specification is most useful when you want to include data from different sources (that again use the same parameters).
+
+<!-- START_QUESTION -->
+#### Question #1:
+
+Identify and briefly describe each term mentioned above in the graphic created by the code below:
+
+```{r question_code_parts, eval = TRUE, warning = FALSE, fig.height = 3}
+ggplot(data = colleges, mapping = aes(x = Adm_Rate, color = Private)) +
+  geom_density() +
+  scale_x_continuous(trans = "reverse") +
+  facet_wrap(~Region)
+```
+<!-- END_QUESTION -->
+
+<!-- START_QUESTION -->
+#### Question #2:
+
+Create a histogram of the variable "Enrollment" displayed on the log2-scale and faceted by the variable "Private". Use the ggplot2 cheatsheet to help you identify the necessary functions and arguments.
+<!-- END_QUESTION -->
+
+## Themes
+
+Themes are pre-built style templates used to better tailor a graphic to the mode of publication.
+
+The example below applies a black and white theme to Example 2.1 from above:
+
+```{r example_theme_1, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+ggplot(data = AmesHousing, mapping = aes(x = GrLivArea, y = SalePrice, color = KitchenQuality)) +
+  geom_point() +
+  theme_bw()
+```
+
+Other pre-built themes:
+
+ * `theme_bw()`
+ * `theme_linedraw()`, `theme_light()`, and `theme_dark()`
+ * `theme_minimal()`
+ * `theme_classic()`
+ * `theme_void()`
+
+You can judge the differences in these themes below:
+
+```{r, echo = FALSE, fig.height = 4}
+library(patchwork)
+x <- c(1, 2, 3)
+y <- c(1, 2, 3)
+plot1 <- ggplot(mapping = aes(x = x, y = y)) +
+           geom_point() +
+           labs(title = "theme_grey()") +
+           theme_grey() +
+           theme(plot.title = element_text(hjust = 0.5))
+plot2 <- ggplot(mapping = aes(x = x, y = y)) +
+           geom_point() +
+           labs(title = "theme_bw()") +
+           theme_bw() +
+           theme(plot.title = element_text(hjust = 0.5))
+plot3 <- ggplot(mapping = aes(x = x, y = y)) +
+           geom_point() +
+           labs(title = "theme_linedraw()") +
+           theme_linedraw() +
+           theme(plot.title = element_text(hjust = 0.5))
+plot4 <- ggplot(mapping = aes(x = x, y = y)) +
+           geom_point() +
+           labs(title = "theme_light()") +
+           theme_light() +
+           theme(plot.title = element_text(hjust = 0.5))
+plot5 <- ggplot(mapping = aes(x = x, y = y)) +
+           geom_point() +
+           labs(title = "theme_dark()") +
+           theme_dark() +
+           theme(plot.title = element_text(hjust = 0.5))
+plot6 <- ggplot(mapping = aes(x = x, y = y)) +
+           geom_point() +
+           labs(title = "theme_minimal()") +
+           theme_minimal() +
+           theme(plot.title = element_text(hjust = 0.5))
+plot7 <- ggplot(mapping = aes(x = x, y = y)) +
+           geom_point() +
+           labs(title = "theme_classic()") +
+           theme_classic() +
+           theme(plot.title = element_text(hjust = 0.5))
+plot8 <- ggplot(mapping = aes(x = x, y = y)) +
+           geom_point() +
+           labs(title = "theme_void()") +
+           theme_void() +
+           theme(plot.title = element_text(hjust = 0.5))
+(plot1 | plot2 | plot3 | plot4) / (plot5 | plot6 | plot7 | plot8)
+```
+
+Any theme can be further customized using `theme()`. Most commonly this function is used to remove a graph's legend:
+
+```{r example_theme_3, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+ggplot(data = AmesHousing, mapping = aes(x = GrLivArea, y = SalePrice, color = KitchenQuality)) +
+  geom_point() +
+  theme_bw() +
+  theme(legend.position = "none")
+```
+
+<!-- START_QUESTION -->
+#### Question #3:
+
+The code below creates a line graph that depicts (via a smoothed moving average) the approval of former presidents Jimmy Carter, Ronald Reagan, and Barrack Obama. Modify second portion of this code to try out a few different non-default themes. Then, briefly discuss (1-2 sentences) which themes you feel are most effective and least effective for this type of graph. Include the graph with your preferred theme in your lab write-up.
+
+```{r example_theme_4, eval = TRUE, fig.height = 3}
+## Data processing
+approval <- read.csv("https://bit.ly/398YR6M")
+approval$Week = as.numeric(difftime(as.Date(approval$End.Date, "%m/%d/%y"), as.Date(approval$Inaug.Date, "%m/%d/%y"), units = "weeks"))
+approval2 = subset(approval, President %in% c("Reagan", "Carter", "Obama"))
+
+## Creating the graph
+ggplot(data = approval2, mapping = aes(x = Week, y = Approving, color = President)) +
+ geom_smooth(method = "loess", span = 0.6, se = FALSE)
+```
+<!-- END_QUESTION -->
+
+## Labels and Annotations
+Labels and annotations are important aspects of well-constructed data visualizations. They are used to provide context, or draw the viewer's attention towards particular aspects of the graphic.
+
+Labels corresponding to *aesthetics* (such as `x`, `y`, `color`, etc.) are controlled using the `labs()` function:
+
+```{r labels_1, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+ggplot(data = AmesHousing, mapping = aes(x = GrLivArea, y = SalePrice, color = KitchenQuality)) +
+  geom_point() +
+  theme_bw() +
+  labs(x = "Above Ground Living Area", y = "Sales Price", color = "Kitchen Quality")
+```
+
+Annotations are added the graphic as a layer using the `annotate()` function:
+
+```{r labels_2, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+ggplot(data = AmesHousing, mapping = aes(x = GrLivArea, y = SalePrice, color = KitchenQuality)) +
+  geom_point() +
+  theme_bw() +
+  labs(x = "Above Ground Living Area", y = "Sales Price", color = "Kitchen Quality") +
+  annotate(geom = "rect", xmin = 2800, xmax = 6000, ymin = 150000, ymax = 770000, color = "red", alpha = 0.2)
+```
+
+The example above annotates a scatter plot by drawing a red rectangle with 20% transparency (controlled by `alpha = `) around the cluster of houses sold with large living areas.
+
+#### Question #4:
+
+Use the `subset()` function to create a data frame containing only colleges located in the state of Iowa. Using these data, create a box plot of admissions rates, rename the $x$-axis label to "Admissions Rate", and add a text annotation above the outlier saying "Grinnell".
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- In the following scatterplot we use **GrLivArea** as our x variable and **SalePrice** as or y variable. -->
+<!-- ```{r 2-b,exercise=TRUE,message=FALSE} -->
+<!-- # Create a scatterplot of above ground living area by sales price -->
+<!-- ggplot(data=AmesHousing, mapping= aes(x=GrLivArea, y=SalePrice)) + geom_point() -->
+<!-- ``` -->
+
+<!-- **Questions:**   -->
+
+<!-- 1) Create a scatterplot using `ggplot` with **Fireplaces** as the x-axis and **SalePrice** as the y-axis. -->
+<!-- ```{r 2-c,exercise=TRUE,exercise.lines=5} -->
+
+<!-- ``` -->
+
+<!-- 2) **Two forms for ggplot functions:** The following two lines of code above would provide identical results.  -->
+
+<!-- * `ggplot(data, aes(x, y)) + geom_line()` -->
+<!-- * `ggplot(data) + geom_line(aes(x, y))` -->
+
+<!-- In the first case, the `aes` is set as the default for all `geoms`. In essense, the same `x` and `y` variables are used throughout the entire graphic. However, as graphics get more complex, it is often best to creating local `aes` mappings for each `geom` as shown in the second line of code. -->
+
+<!-- Modify the code for histogram above so that the `aes` is listed within the `geom`. However the resulting graph should look identical to the one above. -->
+<!-- ```{r 2-d,exercise=TRUE,exercise.lines=5,message=FALSE} -->
+
+<!-- ``` -->
+
+
+<!-- ## 3. Making modifications to graphics using ggplot2 -->
+
+<!-- It is easy to make modifications to the color, shape and transparency of the points in a scatterplot.  -->
+
+<!-- ```{r 3-a,exercise=TRUE} -->
+<!-- ggplot(data=AmesHousing) + -->
+<!--   geom_point(mapping = aes(x=log(GrLivArea), y=log(SalePrice), color="violet"), alpha = .5, shape = 1) -->
+<!-- ``` -->
+
+
+<!-- **On Your Own** -->
+
+<!-- * In the code above, adjust `alpha` to any values between 0 and 1. How does changing `alpha` modify the points on a graph? -->
+<!-- * Adjust the shape values. For example, what symbol is used when `shape = 23`? -->
+<!-- * Run the above code using `geom_point(aes(x=log(GrLivArea), y=log(SalePrice), color = KitchenQuality), alpha = .5,shape = 10)`. What color corresponds to Kitchen Quality = Good? -->
+
+<!-- Notice that fixed color names are given in quotes, `color = "navy"`. However, if we select colors based upon a variable from our data frame, we treat it as an explanatory variable, and place it within the `aes` part of our code. -->
+
+<!-- The scatterplot above suffers from overplotting, that is, many values are being plotted on top of each other many times. We can use the alpha argument to adjust the transparency of points so that higher density regions are darker. By default, this value is set to 1 (non-transparent), but it can be changed to any number between 0 and 1, where smaller values correspond to more transparency. Another useful technique is to use the facet option to render scatterplots for each level of an additional categorical variable, such as kitchen quality. In **ggplot2**, this is easily done using the `facet_grid()` layer. -->
+
+<!-- ```{r 3-b, exercise = TRUE} -->
+<!-- # Create distinct scatterplots for each type of kitchen quality -->
+<!-- ggplot(data=AmesHousing) + -->
+<!--   geom_point(aes(x=log(GrLivArea), y=log(SalePrice)), alpha = .5,shape = 10) +  -->
+<!--   facet_grid(. ~ KitchenQuality) -->
+<!-- ``` -->
+
+
+<!-- ## 4. Adding layers to graphics using the `ggplot` function -->
+
+<!-- In the following code, we layer additional components onto the two graphs shown in the previous section. -->
+
+<!-- ```{r 4-a,exercise=TRUE} -->
+<!-- ggplot(data=AmesHousing) +                          -->
+<!--       geom_histogram(mapping = aes(SalePrice/100000),  -->
+<!--           breaks=seq(0, 7, by = 1), col="red", fill="lightblue") +  -->
+<!--       geom_density(mapping = aes(x=SalePrice/100000, y = (..count..)))  +    -->
+<!--       labs(title="Figure 1: Housing Prices in Ames, Iowa (in $100,000)",  -->
+<!--           x="Sale Price of Individual Homes")    -->
+<!-- ``` -->
+
+<!-- **Remarks:** -->
+
+<!-- * The histogram geom transforms the SalePrice, modifies the bin size and changes the color. -->
+<!-- * `geom_density` overlays a density curve on top of the histogram. -->
+<!-- * Typically density curves and histrograms have very different scales, here we use `y = (..count..)` to modify the density. Alternatively, we could specify `aes(x = SalePrice/100000, y = (..density..))` in the histogram geom. -->
+<!-- * The labs() command adds a title and an x-axis label. A y-axis label can also be added by using `y = " ". -->
+
+
+<!-- In the code below we create three scatterplots of the log of the above ground living area by the log of sales price -->
+
+<!-- ```{r 4-b,exercise=TRUE} -->
+<!-- ggplot(data=AmesHousing, aes(x=log(GrLivArea), y=log(SalePrice)) ) +       -->
+<!--   geom_point(shape = 3, color = "darkgreen") +                               -->
+<!--   geom_smooth(method=lm,  color="green") +                   -->
+<!--   labs(title="Figure 2: Housing Prices in Ames, Iowa") -->
+<!-- ``` -->
+
+<!-- ```{r 4-c,exercise=TRUE} -->
+<!-- ggplot(data=AmesHousing) +  -->
+<!--   geom_point(aes(x=log(GrLivArea), y=log(SalePrice), color=KitchenQuality),shape=2, size=2) +  -->
+<!--   geom_smooth(aes(x=log(GrLivArea), y=log(SalePrice), color=KitchenQuality), -->
+<!--           method=loess, size=1) +                         -->
+<!--   labs(title="Figure 3: Housing Prices in Ames, Iowa")  -->
+<!-- ``` -->
+
+<!-- ```{r 4-d,exercise=TRUE} -->
+<!-- ggplot(data=AmesHousing) + -->
+<!--   geom_point(mapping = aes(x=log(GrLivArea), y=log(SalePrice), color=KitchenQuality)) + -->
+<!--   geom_smooth(mapping = aes(x=log(GrLivArea), y=log(SalePrice), color=KitchenQuality),  -->
+<!--       method=lm, se=FALSE, fullrange=TRUE) +                              -->
+<!--   facet_grid(. ~ Fireplaces) +                       -->
+<!--   labs(title="Figure 4: Housing Prices in Ames, Iowa") -->
+<!-- ``` -->
+
+<!-- **Remarks:** -->
+
+<!-- * `geom_point` is used to create a scatterplot. As shown in Figure 2, multiple shapes can be used as points. The [Data Visualization Cheat Sheet](https://www.rstudio.com/wp-content/uploads/2015/03/ggplot2-cheatsheet.pdf) lists several shape options` -->
+<!-- * `geom_smooth` adds a fitted line through the data.   -->
+<!--     + `method=lm` specifies a linear regression line. `method=loess` creates a [smoothed local regression curve](http://r-statistics.co/Loess-Regression-With-R.html). -->
+<!--     + `se=FALSE` removes the shaded 95% confidence regions around each line. The additional option `level` can change the confidence level. -->
+<!--     + `fullrange=TRUE` extends all regression lines to the same length  -->
+<!-- *  `facet_grid` and `facet_wrap` commands are used to create multiple plots. In Figure 4, we have created separate scatterplots based upon the number of fireplaces. -->
+<!-- *  When assigning fixed characteristics, (such as `color`, `shape` or `size`), the commands occur outside the `aes`, as in Figure 2, `color="green"`. When characteristics are dependent on the data, the command should occur within the `aes`, such as in Figure 3, `color=KitchenQuality`. -->
+
+
+<!-- In the above examples, only a few `geoms` are listed. The [ggplot2 website](http://docs.ggplot2.org/current/) lists each `geom` and gives detailed examples of how they are used.  -->
+
+
+<!-- **Questions:**   -->
+
+<!-- 3) Create a histogram of the above ground living area, `GrLivArea`. You may get a warning related to bin size. Try specifying the breaks for the histogram, `breaks=seq(0, 6000, by = 1000)` or `breaks=seq(0, 6000, by = 100)`. -->
+<!-- ```{r 4e,exercise=TRUE,exercise.lines=5} -->
+
+<!-- ``` -->
+
+<!-- ```{r 4e-solution} -->
+<!-- # A histogram of above ground living area  -->
+<!-- ggplot(data=AmesHousing) +                          -->
+<!--   geom_histogram(mapping = aes(GrLivArea)) -->
+<!-- ``` -->
+
+
+
+<!-- 4) Create a scatterplot using `Fireplaces` as the explanatory variable and `SalePrice` as the response variable. Include a regression line, a title, and labels for the x and y axes. -->
+<!-- ```{r 4f,exercise=TRUE,exercise.lines=5} -->
+
+<!-- ``` -->
+
+
+<!-- ```{r 4f-solution} -->
+<!-- # Create a scatterplot of above ground living area by sales price -->
+<!-- ggplot(data=AmesHousing, aes(x=Fireplaces, y=SalePrice)) +       -->
+<!--   geom_point() + -->
+<!--   geom_smooth(method=lm) +                   -->
+<!--   labs(title="Housing Prices in Ames, Iowa", x="Fireplaces", y = "Sale Price") -->
+<!-- ``` -->
+
+
+<!-- ## 5. Additional Considerations with R graphics -->
+
+<!-- **Influence of data types on graphics:** If you use the `str` command after reading data into R, you will notice that each variable is assigned one of the following `types`: Character, Numeric (real numbers), Integer, Complex, or Logical (TRUE/FALSE). In particular, the variable **Fireplaces** in considered an integer. In the code below we try to `color` and `fill` a density graph by an integer value. Notice that the color and fill commands appear to be ignored in the graph. -->
+<!-- ```{r 5a,exercise=TRUE} -->
+<!-- # str(AmesHousing) -->
+<!-- ggplot(data=AmesHousing) +                    -->
+<!--   geom_density(aes(SalePrice, color = Fireplaces,  fill = Fireplaces)) -->
+<!-- ``` -->
+
+<!-- In the following code, we use the `dplyr` package to modify the AmesHousing data; we first restrict the dataset to only houses with less than three fireplaces and then create a new variable, called **Fireplace2**. The `as.factor` command creates a **factor**, wich is a variable that contains a set of numeric codes with character-valued levels. Notice that the `color` and `fill` command now work properly.  -->
+
+<!-- ```{r 5b,exercise=TRUE} -->
+<!-- # Create a new data frame with only houses with less than 3 fireplaces -->
+<!-- AmesHousing2 <- filter(AmesHousing, Fireplaces < 3) -->
+<!-- # Create a new variable called Fireplace2 -->
+<!-- AmesHousing2 <-mutate(AmesHousing2,Fireplace2=as.factor(Fireplaces)) -->
+<!-- #str(AmesHousing2) -->
+
+<!-- ggplot(data=AmesHousing2) +                  -->
+<!--   geom_density(aes(SalePrice, color = Fireplace2,  fill = Fireplace2), alpha = 0.2) -->
+<!-- ``` -->
+
+<!-- **Customizing graphs:** In addition to using a **data frame**, **geoms**, and **aes**, several additional components can be added to customize each graph, such as: **stats**, **scales**, **themes**, **positions**, **coordinate systems**, **labels**, and **legends**. We will not discuss all of these components here, but the materials in the references section provide detailed explanations. In the code below we provide a few examples on how to customize graphs. -->
+
+<!-- ```{r 5c,exercise=TRUE,messsage = FALSE} -->
+<!-- ggplot(AmesHousing2, aes(x = Fireplace2, y = SalePrice, color = KitchenQuality)) + -->
+<!--   geom_boxplot(position = position_dodge(width = 1)) + -->
+<!--   coord_flip()+  -->
+<!--   labs(title="Housing Prices in Ames, Iowa") + -->
+<!--   theme(plot.title = element_text(family = "Trebuchet MS", color = "blue", face="bold", size=12, hjust=0)) -->
+<!-- ``` -->
+
+<!-- **Remarks:** -->
+
+<!-- * `position` is used to address geoms that would take the same space on a graph. In the above boxplot, `position_dodge(width = 1)` adds a space between each box. For scatterplots, `position = position_jitter()` puts spaces between overlapping points. -->
+<!-- * `theme` is used to change the style of a graph, but does not change the data or geoms. The above code is used to modify only the title in a boxplot. A better approach for beginners is to choose among themes that were created to customize the overall graph. Common examples are `theme_bw()`, `theme_classic()`, `theme_grey()`, and `theme_minimal()`. You can also install the `ggthemes` package for many more options. -->
+
+
+<!-- **Questions:**   -->
+
+<!-- 5) In the boxplot, what is done by the code `coord_flip()`? -->
+<!-- ```{r 6e,exercise=TRUE,exercise.lines=5} -->
+
+<!-- ``` -->
+
+<!-- 6) Create a new boxplot, similar to the one above, but use `theme_bw()` instead of the given theme command. Explain how the graph changes. -->
+<!-- ```{r 6f,exercise=TRUE,exercise.lines=5} -->
+
+<!-- ``` -->
+
+<!-- 7) Use the tab completion feature in RStudio (type theme and hit the `Tab` key to see various options) to determine what theme is the default for most graphs in ggplot. -->
+<!-- ```{r 6g,exercise=TRUE,exercise.lines=5} -->
+
+<!-- ``` -->
+
+
+
+
+<!-- ## 6. References and Resources -->
+
+<!-- - See more tutorials at [Stat2Labs](https://stat2labs.sites.grinnell.edu/RTutorials.html). -->
+
+<!-- - https://www.youtube.com/watch?v=HeqHMM4ziXA and https://www.youtube.com/watch?v=n8kYa9vu1l8: Two introductory videos on ggplot2 by Roger Peng. -->
+
+<!-- - https://www.rstudio.com/wp-content/uploads/2015/03/ggplot2-cheatsheet.pdf: Data Visualization with ggplot2 Cheat Sheet  -->
+
+<!-- - https://exts.ggplot2.tidyverse.org/gallery/: Several diverse examples of graphs using ggplot -->
+
+<!-- - https://ggplot2.tidyverse.org/:    A well-documented list of ggplot2 components with descriptions  -->
+
+<!-- - http://www.statmethods.net/advgraphs/ggplot2.html:   Quick-R introduction to graphics -->
+
+<!-- - http://cran.r-project.org/web/packages/ggplot2/ggplot2.pdf: Formal documentation of the ggplot2 package -->
+
+<!-- - http://www.cookbook-r.com/Graphs/: R Graphics Cookbook, a text by Winston Chang -->
+
+<!-- - Sample chapters of Hadley Wickhams text,  [ggplot2: Elegant Graphics for Data] Analysis(https://ggplot2-book.org/) -->
+
+
