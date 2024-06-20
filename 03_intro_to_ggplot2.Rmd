@@ -1,4 +1,4 @@
---- 
+---
 title: "Introduction to Data Visualization with `ggplot2`"
 output:
   html_document:
@@ -16,32 +16,19 @@ description: >
 ---
 
 ```{r setup, include=FALSE}
-library(learnr)
 library(ggplot2)
 library(mosaic)
+library(dplyr)
 
 ALL_AS_EXERCISE = TRUE  # switch between interactive online activities (true means interactive)
 EVAL_HO_BLOCKS  = FALSE # code that only executes in student handouts
 FIG_HEIGHT = 2
 
 # The csv file should be imported into RStudio:
-AmesHousingFull <- read.csv("~/Downloads/ameshouse/AmesHousing.csv")
-#AmesHousingFull <- read.csv("data/AmesHousing.csv")
-AmesHousingFull$KitchenQuality <- 
-      ifelse(AmesHousingFull$KitchenQual == "Ex","Excellent", 
-      ifelse(AmesHousingFull$KitchenQual == "Gd", "Good",
-      ifelse(AmesHousingFull$KitchenQual == "TA","Average",
-      ifelse(AmesHousingFull$KitchenQual == "Fa", "Fair", "Poor")))) 
+GreenHouse<- readr::read_csv("https://www.stat2games.sites.grinnell.edu/data/greenhouse/getdata.php") 
 
-# AmesHousingFull$Fireplaces <- as.factor(AmesHousingFull$Fireplaces)
-AmesHousing <- select(AmesHousingFull, SalePrice, GrLivArea, Fireplaces, KitchenQuality)
+GreenHouse <- select(GreenHouse, Crop, Money, Water, Nitrates, Yield, Profit)
 
-# # Needed Cleaning 
-# AmesHousing2 <- AmesHousing %>%
-#   filter(Fireplaces < 3) %>%
-#   filter(KitchenQuality != "Poor")
-# 
-# AmesHousing2 <-mutate(AmesHousing2,Fireplace2=as.factor(Fireplaces))
 colleges <- read.csv("https://remiller1450.github.io/data/Colleges2019.csv")
 ```
 
@@ -86,7 +73,7 @@ Run the following code to get a peak of the AmesHousing data:
 
 ```{r display_data, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE}
 # The code below uses the head() function to view the first four lines of the AmesHousing data.
-head(AmesHousing, 4)
+head(GreenHouse, 4)
 ```
 
 ## Overview of the `ggplot2` Framework
@@ -114,13 +101,13 @@ Thus the structure of a graphic made with `ggplot()` could have the following fo
 In the following histogram we use `SalePrice` as the $x$ variable:
 
 ```{r example_hist_1, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, message = FALSE}
-ggplot(data = AmesHousing, mapping = aes(x = SalePrice)) + geom_histogram()
+ggplot(data = GreenHouse, mapping = aes(x = Water)) + geom_histogram()
 ```
 
 In the above code, the terms `data =` and `mapping =` are not required (nor is `x =` since it is a one variable plot), but are used for clarification. For example, the following code will produce the same result:
 
 ```{r example_hist_2, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, message = FALSE}
-ggplot(AmesHousing, aes(SalePrice)) + geom_histogram()
+ggplot(GreenHouse, aes(Water)) + geom_histogram()
 ```
 
 **Note:** The terms `data =` and `mapping =` are not required if and only if both are supplied in the appropriate order; the first and second arguments are always presumed to be `data` and `mapping`, respectively (unless otherwise specified).
@@ -143,13 +130,13 @@ ggplot()
 #### Example 1.1b - again a base layer, but now with specified data and axes
 
 ```{r example_base_layer_1_2, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
-ggplot(data = AmesHousing, mapping = aes(x = GrLivArea, y = SalePrice))
+ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield))
 ```
 
 #### Example 1.2 - add a layer displaying raw data, here as a scatter plot with "points"
 
 ```{r example_add_layer_1, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
-ggplot(data = AmesHousing, mapping = aes(x = GrLivArea, y = SalePrice)) +
+ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield)) +
   geom_point()
 ```
 
@@ -158,7 +145,7 @@ Notice the addition of the "+" sign after the first line, this indicates that an
 #### Example 1.3 - add another layer (a smooth fit)
 
 ```{r example_add_layer_2, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
-ggplot(data = AmesHousing, mapping = aes(x = GrLivArea, y = SalePrice)) +
+ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield)) +
   geom_point() +
   geom_smooth()
 ```
@@ -166,7 +153,7 @@ ggplot(data = AmesHousing, mapping = aes(x = GrLivArea, y = SalePrice)) +
 #### Example 1.4 - add another layer (reference text)
 
 ```{r example_add_layer_3, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
-ggplot(data = AmesHousing, mapping = aes(x = GrLivArea, y = SalePrice)) +
+ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield)) +
   geom_point() +
   geom_smooth() +
   annotate("text", x = 5000, y = 600000, label = "Data from 2006 to 2010")
@@ -181,23 +168,23 @@ The data and mapping arguments provided in the base layer are carried forward to
 #### Example 2.1 - distinguishing data points by kitchen quality with a color aesthetic
 
 ```{r example_more_base_layer_1, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
-ggplot(data = AmesHousing, mapping = aes(x = GrLivArea, y = SalePrice, color = KitchenQuality)) +
+ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield, color = Crop)) +
   geom_point()
 ```
 
 #### Example 2.2 - a local override of the color aesthetic
 
 ```{r example_more_base_layer_2, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
-ggplot(data = AmesHousing, mapping = aes(x = GrLivArea, y = SalePrice, color = KitchenQuality)) +
+ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield, color = Crop)) +
   geom_point(color = "red")
 ```
 
 #### Example 2.3 - specifying aesthetics locally within layers
 
 ```{r example_more_base_layer_3, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
-ggplot(data = AmesHousing) +
-  geom_point( mapping = aes(x = GrLivArea, y = SalePrice, color = KitchenQuality)) +
-  geom_smooth(mapping = aes(x = GrLivArea, y = SalePrice, color = KitchenQuality))
+ggplot(data = GreenHouse) +
+  geom_point(mapping = aes(x = Water, y = Yield, color = Crop)) +
+  geom_smooth(mapping = aes(x = Water, y = Yield, color = Crop))
 ```
 
 Local aesthetic specification is most useful when you want to add layers that involve the same parameters ("$x$" and "$y$") but for different things. Common examples are drawing a line through several different group means of an ordinal categorical variable, or displaying both polygons and points on a map.
@@ -205,9 +192,9 @@ Local aesthetic specification is most useful when you want to add layers that in
 #### Example 2.4 - specifying data locally within layers
 
 ```{r example_more_base_layer_4, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
-ggplot(mapping = aes(x = GrLivArea, y = SalePrice)) +
-  geom_point(data = subset(AmesHousing, KitchenQuality == "Excellent"), color = "red") +
-  geom_point(data = subset(AmesHousing, KitchenQuality == "Average"),   color = "blue")
+ggplot(mapping = aes(x = Water, y = Yield)) +
+  geom_point(data = subset(GreenHouse, Crop == "Tomato"), color = "red") +
+  geom_point(data = subset(GreenHouse, Crop == "Bean"),   color = "blue")
 ```
 
 Local data specification is most useful when you want to include data from different sources (that again use the same parameters).
@@ -238,7 +225,7 @@ Themes are pre-built style templates used to better tailor a graphic to the mode
 The example below applies a black and white theme to Example 2.1 from above:
 
 ```{r example_theme_1, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
-ggplot(data = AmesHousing, mapping = aes(x = GrLivArea, y = SalePrice, color = KitchenQuality)) +
+ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield, color = Crop)) +
   geom_point() +
   theme_bw()
 ```
@@ -303,7 +290,7 @@ plot8 <- ggplot(mapping = aes(x = x, y = y)) +
 Any theme can be further customized using `theme()`. Most commonly this function is used to remove a graph's legend:
 
 ```{r example_theme_3, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
-ggplot(data = AmesHousing, mapping = aes(x = GrLivArea, y = SalePrice, color = KitchenQuality)) +
+ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield, color = Crop) +
   geom_point() +
   theme_bw() +
   theme(legend.position = "none")
@@ -332,20 +319,20 @@ Labels and annotations are important aspects of well-constructed data visualizat
 Labels corresponding to *aesthetics* (such as `x`, `y`, `color`, etc.) are controlled using the `labs()` function:
 
 ```{r labels_1, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
-ggplot(data = AmesHousing, mapping = aes(x = GrLivArea, y = SalePrice, color = KitchenQuality)) +
+ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield, color = Crop)) +
   geom_point() +
   theme_bw() +
-  labs(x = "Above Ground Living Area", y = "Sales Price", color = "Kitchen Quality")
+  labs(x = "Water Level", y = "Yield", color = "Crop")
 ```
 
 Annotations are added the graphic as a layer using the `annotate()` function:
 
 ```{r labels_2, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
-ggplot(data = AmesHousing, mapping = aes(x = GrLivArea, y = SalePrice, color = KitchenQuality)) +
+ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield, color = Crop)) +
   geom_point() +
   theme_bw() +
-  labs(x = "Above Ground Living Area", y = "Sales Price", color = "Kitchen Quality") +
-  annotate(geom = "rect", xmin = 2800, xmax = 6000, ymin = 150000, ymax = 770000, color = "red", alpha = 0.2)
+  labs(x = "Water Level", y = "Yield", color = "Crop")
+#  annotate(geom = "rect", xmin = 2800, xmax = 6000, ymin = 150000, ymax = 770000, color = "red", alpha = 0.2)
 ```
 
 The example above annotates a scatter plot by drawing a red rectangle with 20% transparency (controlled by `alpha = `) around the cluster of houses sold with large living areas.
