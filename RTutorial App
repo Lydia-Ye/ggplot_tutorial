@@ -1,0 +1,84 @@
+library(shiny)
+library(readr)
+library(ggplot2)
+library(dplyr)
+
+
+
+greenhouse <- readr::read_csv("https://www.stat2games.sites.grinnell.edu/data/greenhouse/getdata.php") 
+# Sort the data based on groups and players
+greenhouse$GroupID <- tolower(greenhouse$GroupID)
+
+greenhouse <- select(greenhouse, GroupID, PlayerID, Level, Season, SellPrice, BuyPrice, Crop, Money, Water, Nitrates, Yield, Profit)
+
+#Creating Y Variable Columns
+
+#Revenue/Costs/Profit
+greenhouse <- greenhouse %>% mutate(Revenue = Money,
+                                Costs = BuyPrice + Water + (Nitrates - 250)/10,
+                                Profit = Revenue - Costs)
+
+
+##UI
+ui <- fluidPage(
+  
+  titlePanel("Greenhouse RTutorial"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      
+      selectInput(inputId = "groupID",
+                  label = "Group ID:", 
+                  choices =  c(all_groups),
+                  multiple = TRUE,
+                  selectize = TRUE,
+                  selected = "sample1"),
+      
+      selectInput(inputId = "xvar",
+                  label = "X Variable:",
+                  choices = c("Water", "Nitrates"),
+                  selected = "Water",
+                  multiple = FALSE),
+      
+      
+      selectInput(inputId = "yvar",
+                  label = "Y Variable:",
+                  choices = c("Yield", "Revenue", "Costs", "Profit"),
+                  selected = "Yield",
+                  multiple = FALSE),
+      
+      selectInput(inputId = "facet",
+                  label = "Facet by:",
+                  choices = c("Level", "Season", "Level", "Crop"),
+                  multiple = FALSE),
+      
+      selectInput(inputId = "model",
+                  label = "Statistical Model:",
+                  choices = c("None", "Linear", "Quadratic", "Cubic", "Smoother"),
+                  multiple = FALSE,
+                  selectize = TRUE,
+                  selected = "None"),
+      
+      
+      downloadButton('downloadData', label = "Greenhouse Data"),
+      
+    ),
+    
+    mainPanel(
+      tabsetPanel(
+        type = "tabs",
+        tabPanel("Data Wrangling", uiOutput("dataWrangling")), #First tab
+        tabPanel("Data Visualizations", plotOutput("dataVisualizations"))  #Second tab
+      )
+    )
+  )
+  
+)
+
+##Server
+server <- function(input, output,session) {
+  
+}
+
+#Running Shiny App
+shinyApp(ui = ui, server = server)
