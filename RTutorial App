@@ -2,6 +2,7 @@ library(shiny)
 library(readr)
 library(ggplot2)
 library(dplyr)
+library(DT)
 
 
 
@@ -78,7 +79,7 @@ ui <- fluidPage(
       tabsetPanel(
         type = "tabs",
         tabPanel("Data Wrangling",verbatimTextOutput("filterCode"),
-                 tableOutput("dataPreview")), #First tab
+                 DTOutput("dataPreview")), #First tab
         tabPanel("Data Visualizations", plotOutput("dataVisualizations")),  #Second tab
       )
     )
@@ -138,6 +139,7 @@ server <- function(input, output, session) {
     data
   })
   
+  
   # Output the filter code to the UI
   output$filterCode <- renderText({
     req(filterCode())
@@ -145,9 +147,9 @@ server <- function(input, output, session) {
   })
   
   # Display the first 10 rows of the filtered data
-  output$dataPreview <- renderTable({
+  output$dataPreview <- renderDT({
     req(filteredData())
-    head(filteredData(), 10)
+    datatable(filteredData(), options = list(pageLength = 10))
   })
   
   # Handler for downloading filtered data
