@@ -11,13 +11,22 @@ greenhouse$GroupID <- tolower(greenhouse$GroupID)
 
 greenhouse <- select(greenhouse, GroupID, PlayerID, Level, Season, SellPrice, BuyPrice, Crop, Money, Water, Nitrates, Yield, Profit)
 
+
 #Creating Y Variable Columns
 
 #Revenue/Costs/Profit
 greenhouse <- greenhouse %>% mutate(Revenue = Money,
-                                Costs = BuyPrice + Water + (Nitrates - 250)/10,
-                                Profit = Revenue - Costs)
+                                    Costs = BuyPrice + Water + (Nitrates - 250)/10,
+                                    Profit = Revenue - Costs)
 
+data.all <-read_csv("https://www.stat2games.sites.grinnell.edu/data/greenhouse/getdata.php") 
+data.all$Level <- as.factor(data.all$Level)
+data.all$Plot <- as.factor(data.all$Plot)
+data.all$GroupID <- as.character(data.all$GroupID)
+data.all$PlayerID <- as.character(data.all$PlayerID)
+
+all_groups <- sort(unique(data.all$GroupID))
+all_players <- sort(unique(data.all$PlayerID))
 
 ##UI
 ui <- fluidPage(
@@ -29,10 +38,10 @@ ui <- fluidPage(
       
       selectInput(inputId = "groupID",
                   label = "Group ID:", 
-                  choices =  c(all_groups),
+                  choices =  c("all", all_groups),
                   multiple = TRUE,
                   selectize = TRUE,
-                  selected = "sample1"),
+                  selected = "all"),
       
       selectInput(inputId = "xvar",
                   label = "X Variable:",
@@ -49,7 +58,8 @@ ui <- fluidPage(
       
       selectInput(inputId = "facet",
                   label = "Facet by:",
-                  choices = c("Level", "Season", "Level", "Crop"),
+                  choices = c("Level", "Season", "Crop"),
+                  selected = "Level",
                   multiple = FALSE),
       
       selectInput(inputId = "model",
@@ -67,18 +77,90 @@ ui <- fluidPage(
     mainPanel(
       tabsetPanel(
         type = "tabs",
-        tabPanel("Data Wrangling", uiOutput("dataWrangling")), #First tab
-        tabPanel("Data Visualizations", plotOutput("dataVisualizations"))  #Second tab
+        tabPanel("Data Wrangling",verbatimTextOutput("filterCode"),
+                 tableOutput("dataPreview")), #First tab
+        tabPanel("Data Visualizations", plotOutput("dataVisualizations")),  #Second tab
       )
     )
   )
   
 )
 
-##Server
-server <- function(input, output,session) {
+
+server <- function(input, output, session) {
   
+  # Reactive expression to generate and store the filter code
+  filterCode <- reactive({
+    req(input$groupID)  # Ensure Group ID input is available
+    
+    # Start building the R code for filtering
+    code <- "data <- readr::read_csv('https://www.stat2games.sites.grinnell.edu/data/greenhouse/getdata.php')"  # Start with the original dataset
+    
+    # Filter by Group ID
+    if (length(input$groupID) > 0) {
+      code <- paste(code, sprintf("\ndata <- data[data$GroupID %%in%% c('%s'), ]", paste(input$groupID, collapse = "', '")), sep="")
+    }
+    
+    # Code to select specific columns based on X and Y variables
+    selected_columns <- unique(c("GroupID", "PlayerID", input$xvar, input$yvar, if(input$facet != "None") input$facet))
+    select_code <- paste("c('", paste(selected_columns, collapse = "', '"), "')", sep="")
+    code <- paste(code, sprintf("\ndata <- data[, %s, drop = FALSE]", select_code), sep="")
+    
+    code
+  })
+  
+  # Output the filter code to the UI
+  output$filterCode <- renderText({
+    req(filterCode())
+    filterCode()  # Display the dynamically generated R code for filtering
+  })
+  
+  # Reactive expression to store filtered data
+  filteredData <- reactive({
+    req(data.all)  # Ensure the dataset is loaded
+    
+    # Filter by Group ID
+    if (length(input$groupID) > 0) {
+      if ("all" %in% input$groupID) {
+        data <- data.all
+      }
+      else{
+        data <- data.all[data.all$GroupID %in% input$groupID, ]
+      }
+    } else {
+      data <- data.all  # No filtering if no group selected
+    }
+    
+    # Dynamically select columns based on user input for X and Y variables
+    selected_columns <- unique(c("GroupID", "PlayerID", input$xvar, input$yvar, "Level", if(input$facet != "None") input$facet))
+    data <- data[, selected_columns, drop = FALSE]
+    
+    data
+  })
+  
+  # Output the filter code to the UI
+  output$filterCode <- renderText({
+    req(filterCode())
+    filterCode()  # Display the dynamically generated R code for filtering
+  })
+  
+  # Display the first 10 rows of the filtered data
+  output$dataPreview <- renderTable({
+    req(filteredData())
+    head(filteredData(), 10)
+  })
+  
+  # Handler for downloading filtered data
+  output$downloadData <- downloadHandler(
+    filename = function() {
+      paste('Data-', Sys.Date(), '.csv', sep="")
+    },
+    content = function(con) {
+      write.csv(filteredData(), con)
+    }
+  )
 }
+
 
 #Running Shiny App
 shinyApp(ui = ui, server = server)
