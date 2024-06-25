@@ -4,32 +4,23 @@ library(ggplot2)
 library(dplyr)
 library(DT)
 
-
-
-greenhouse <- readr::read_csv("https://www.stat2games.sites.grinnell.edu/data/greenhouse/getdata.php") 
-# Sort the data based on groups and players
-greenhouse$GroupID <- tolower(greenhouse$GroupID)
-
-greenhouse <- select(greenhouse, GroupID, PlayerID, Level, Season, SellPrice, BuyPrice, Crop, Money, Water, Nitrates, Yield, Profit)
-
-
-#Creating Y Variable Columns
+data.all <- read_csv("https://www.stat2games.sites.grinnell.edu/data/greenhouse/getdata.php") 
+data.all <- select(data.all, GroupID, PlayerID, Level, Season, SellPrice, BuyPrice, Crop, Money, Water, Nitrates, Yield, Profit)
 
 #Revenue/Costs/Profit
-greenhouse <- greenhouse %>% mutate(Revenue = Money,
-                                    Costs = BuyPrice + Water + (Nitrates - 250)/10,
-                                    Profit = Revenue - Costs)
+data.all <- data.all %>% mutate(Revenue = Money,
+                                Costs = BuyPrice + Water + (Nitrates - 250)/10,
+                                Profit = Revenue - Costs)
 
-data.all <-read_csv("https://www.stat2games.sites.grinnell.edu/data/greenhouse/getdata.php") 
 data.all$Level <- as.factor(data.all$Level)
-data.all$Plot <- as.factor(data.all$Plot)
+data.all$GroupID <- tolower(data.all$GroupID)
 data.all$GroupID <- as.character(data.all$GroupID)
 data.all$PlayerID <- as.character(data.all$PlayerID)
 
 all_groups <- sort(unique(data.all$GroupID))
 all_players <- sort(unique(data.all$PlayerID))
 
-##UI
+# UI
 ui <- fluidPage(
   
   titlePanel("Greenhouse RTutorial"),
@@ -57,18 +48,19 @@ ui <- fluidPage(
                   selected = "Yield",
                   multiple = FALSE),
       
+      selectInput(inputId = "color",
+                  label = "Color by",
+                  choices = c("Crop", "Season", "Plot", "PlayerID", "Water", "Nitrates"),
+                  selected = "Nitrates",
+                  multiple = FALSE),
+      
       selectInput(inputId = "facet",
                   label = "Facet by:",
                   choices = c("Level", "Season", "Crop"),
                   selected = "Level",
                   multiple = FALSE),
-      
-      selectInput(inputId = "model",
-                  label = "Statistical Model:",
-                  choices = c("None", "Linear", "Quadratic", "Cubic", "Smoother"),
-                  multiple = FALSE,
-                  selectize = TRUE,
-                  selected = "None"),
+
+      checkboxInput('bplot',"Add model", FALSE),
       
       
       downloadButton('downloadData', label = "Greenhouse Data"),
@@ -78,18 +70,21 @@ ui <- fluidPage(
     mainPanel(
       tabsetPanel(
         type = "tabs",
-        tabPanel("Data Wrangling",verbatimTextOutput("filterCode"),
-                 DTOutput("dataPreview")), #First tab
-        tabPanel("Data Visualizations", plotOutput("dataVisualizations")),  #Second tab
+        # First tab
+        tabPanel("Data Wrangling",
+                 verbatimTextOutput("filterCode"),
+                 DTOutput("dataPreview")), 
+        #Second tab
+        tabPanel("Data Visualizations", 
+                 plotOutput(outputId = "Plot")),  
       )
     )
   )
   
 )
 
-
+# Server
 server <- function(input, output, session) {
-  
   # Reactive expression to generate and store the filter code
   filterCode <- reactive({
     req(input$groupID)  # Ensure Group ID input is available
@@ -103,7 +98,7 @@ server <- function(input, output, session) {
     }
     
     # Code to select specific columns based on X and Y variables
-    selected_columns <- unique(c("GroupID", "PlayerID", input$xvar, input$yvar, if(input$facet != "None") input$facet))
+    selected_columns <- unique(c("GroupID", "PlayerID", input$xvar, input$yvar, input$color, if(input$facet != "None") input$facet))
     select_code <- paste("c('", paste(selected_columns, collapse = "', '"), "')", sep="")
     code <- paste(code, sprintf("\ndata <- data[, %s, drop = FALSE]", select_code), sep="")
     
@@ -133,18 +128,12 @@ server <- function(input, output, session) {
     }
     
     # Dynamically select columns based on user input for X and Y variables
-    selected_columns <- unique(c("GroupID", "PlayerID", input$xvar, input$yvar, "Level", if(input$facet != "None") input$facet))
+    selected_columns <- unique(c("GroupID", "PlayerID", input$xvar, input$yvar, input$color, "Level", if(input$facet != "None") input$facet))
     data <- data[, selected_columns, drop = FALSE]
     
     data
   })
   
-  
-  # Output the filter code to the UI
-  output$filterCode <- renderText({
-    req(filterCode())
-    filterCode()  # Display the dynamically generated R code for filtering
-  })
   
   # Display the first 10 rows of the filtered data
   output$dataPreview <- renderDT({
@@ -152,7 +141,8 @@ server <- function(input, output, session) {
     datatable(filteredData(), options = list(pageLength = 10))
   })
   
-  # Handler for downloading filtered data
+  
+  # Download filtered data
   output$downloadData <- downloadHandler(
     filename = function() {
       paste('Data-', Sys.Date(), '.csv', sep="")
@@ -161,6 +151,29 @@ server <- function(input, output, session) {
       write.csv(filteredData(), con)
     }
   )
+  
+  # Generate plot based on the filtered data
+  output$Plot <- renderPlot({
+    plotData <- filteredData()
+    
+    if (input$bplot == "TRUE"){
+      myplot <- ggplot(data = plotData, aes_string(x = input$xvar, y = input$yvar, color=input$color)) +
+        geom_smooth(se=FALSE) +
+        geom_point(position=position_dodge(0.8)) +
+        xlab(input$xvar) + ylab(input$yvar)
+    } else {
+      myplot <- ggplot(data = plotData, aes_string(x = input$xvar, y = input$yvar, color=input$color)) +
+        geom_point(position=position_dodge(0.8)) +
+        xlab(input$xvar) + ylab(input$yvar)
+    }
+    
+    if (input$facet != "None") {
+      myplot <- myplot + facet_wrap(as.formula(paste("~", input$facet))) +
+        labs(title = paste("Plot of ",input$yvar, "by",input$xvar, "and Faceted by type of", input$facet))
+    }
+    
+    myplot
+  })
 }
 
 
