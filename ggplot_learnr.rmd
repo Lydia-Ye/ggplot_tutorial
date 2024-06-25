@@ -36,14 +36,14 @@ This online tutorial is designed to introduce you to data visualization and how 
 
 You will need the following packages to complete this tutorial:
 
-```{r load_packages, eval = EVAL_HO_BLOCKS}
+```{r load_packages, exercise = ALL_AS_EXERCISE, eval = EVAL_HO_BLOCKS}
 # install.packages("ggplot2")
 library(ggplot2)
 ```
 
 You will also need the following datasets:
 
-```{r load_datasets, eval = EVAL_HO_BLOCKS}
+```{r load_datasets, exercise = ALL_AS_EXERCISE, eval = EVAL_HO_BLOCKS}
 # Read data from greenhouse game
 GreenHouse<- readr::read_csv("https://www.stat2games.sites.grinnell.edu/data/greenhouse/getdata.php") 
 GreenHouse <- select(GreenHouse, Crop, Money, Water, Nitrates, Yield, Profit)
