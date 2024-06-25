@@ -7,10 +7,12 @@ library(DT)
 data.all <- read_csv("https://www.stat2games.sites.grinnell.edu/data/greenhouse/getdata.php") 
 data.all <- select(data.all, GroupID, PlayerID, Level, Season, SellPrice, BuyPrice, Crop, Money, Water, Nitrates, Yield, Profit)
 
-#Revenue/Costs/Profit
-data.all <- data.all %>% mutate(Revenue = Money,
-                                Costs = BuyPrice + Water + (Nitrates - 250)/10,
-                                Profit = Revenue - Costs)
+# Revenue/Costs/Profit
+data.all <- data.all %>% mutate(
+  Revenue = Money,
+  Costs = BuyPrice + Water + ifelse((Nitrates - 250) / 10 < 0, 0, (Nitrates - 250) / 10),
+  Profit = Revenue - Costs
+)
 
 data.all$Level <- as.factor(data.all$Level)
 data.all$GroupID <- tolower(data.all$GroupID)
@@ -30,7 +32,7 @@ ui <- fluidPage(
       
       selectInput(inputId = "groupID",
                   label = "Group ID:", 
-                  choices =  c("all", all_groups),
+                  choices = c("all", all_groups),
                   multiple = TRUE,
                   selectize = TRUE,
                   selected = "all"),
@@ -41,7 +43,6 @@ ui <- fluidPage(
                   selected = "Water",
                   multiple = FALSE),
       
-      
       selectInput(inputId = "yvar",
                   label = "Y Variable:",
                   choices = c("Yield", "Revenue", "Costs", "Profit"),
@@ -50,21 +51,19 @@ ui <- fluidPage(
       
       selectInput(inputId = "color",
                   label = "Color by",
-                  choices = c("Crop", "Season", "Plot", "PlayerID", "Water", "Nitrates"),
-                  selected = "Nitrates",
+                  choices = c("None", "Crop", "Season", "Plot", "PlayerID", "Water", "Nitrates"),
+                  selected = "None",
                   multiple = FALSE),
       
       selectInput(inputId = "facet",
                   label = "Facet by:",
-                  choices = c("Level", "Season", "Crop"),
+                  choices = c("None", "Level", "Season", "Crop"),
                   selected = "Level",
                   multiple = FALSE),
-
-      checkboxInput('bplot',"Add model", FALSE),
       
+      checkboxInput('bplot', "Add model", FALSE),
       
-      downloadButton('downloadData', label = "Greenhouse Data"),
-      
+      downloadButton('downloadData', label = "Greenhouse Data")
     ),
     
     mainPanel(
@@ -73,14 +72,15 @@ ui <- fluidPage(
         # First tab
         tabPanel("Data Wrangling",
                  verbatimTextOutput("filterCode"),
-                 DTOutput("dataPreview")), 
-        #Second tab
+                 DTOutput("dataPreview")),
+        # Second tab
         tabPanel("Data Visualizations", 
-                 plotOutput(outputId = "Plot")),  
+                 h4("Code for Generating the Plot:"),
+                 verbatimTextOutput("plotCode"),
+                 plotOutput(outputId = "Plot"))
       )
     )
   )
-  
 )
 
 # Server
@@ -90,17 +90,21 @@ server <- function(input, output, session) {
     req(input$groupID)  # Ensure Group ID input is available
     
     # Start building the R code for filtering
-    code <- "data <- readr::read_csv('https://www.stat2games.sites.grinnell.edu/data/greenhouse/getdata.php')"  # Start with the original dataset
+    code <- "data <- readr::read_csv('https://www.stat2games.sites.grinnell.edu/data/greenhouse/getdata.php')\n"  # Start with the original dataset
     
     # Filter by Group ID
     if (length(input$groupID) > 0) {
-      code <- paste(code, sprintf("\ndata <- data[data$GroupID %%in%% c('%s'), ]", paste(input$groupID, collapse = "', '")), sep="")
+      if ("all" %in% input$groupID) {
+        code <- paste0(code, "data <- data\n")
+      } else {
+        code <- paste0(code, sprintf("data <- data[data$GroupID %%in%% c('%s'), ]\n", paste(input$groupID, collapse = "', '")))
+      }
     }
     
     # Code to select specific columns based on X and Y variables
-    selected_columns <- unique(c("GroupID", "PlayerID", input$xvar, input$yvar, input$color, if(input$facet != "None") input$facet))
+    selected_columns <- unique(c("GroupID", "PlayerID", input$xvar, input$yvar, if(input$color != "None") input$color, if(input$facet != "None") input$facet))
     select_code <- paste("c('", paste(selected_columns, collapse = "', '"), "')", sep="")
-    code <- paste(code, sprintf("\ndata <- data[, %s, drop = FALSE]", select_code), sep="")
+    code <- paste0(code, sprintf("data <- data[, %s, drop = FALSE]\n", select_code))
     
     code
   })
@@ -119,8 +123,7 @@ server <- function(input, output, session) {
     if (length(input$groupID) > 0) {
       if ("all" %in% input$groupID) {
         data <- data.all
-      }
-      else{
+      } else {
         data <- data.all[data.all$GroupID %in% input$groupID, ]
       }
     } else {
@@ -128,19 +131,17 @@ server <- function(input, output, session) {
     }
     
     # Dynamically select columns based on user input for X and Y variables
-    selected_columns <- unique(c("GroupID", "PlayerID", input$xvar, input$yvar, input$color, "Level", if(input$facet != "None") input$facet))
+    selected_columns <- unique(c("GroupID", "PlayerID", input$xvar, input$yvar, if(input$color != "None") input$color, "Level", if(input$facet != "None") input$facet))
     data <- data[, selected_columns, drop = FALSE]
     
     data
   })
-  
   
   # Display the first 10 rows of the filtered data
   output$dataPreview <- renderDT({
     req(filteredData())
     datatable(filteredData(), options = list(pageLength = 10))
   })
-  
   
   # Download filtered data
   output$downloadData <- downloadHandler(
@@ -152,30 +153,69 @@ server <- function(input, output, session) {
     }
   )
   
+  # Reactive expression to generate plot code
+  plotCode <- reactive({
+    req(input$xvar, input$yvar)
+    
+    code <- sprintf("ggplot(data = plotData, aes(x = %s, y = %s", input$xvar, input$yvar)
+    if (input$color != "None") {
+      code <- paste0(code, sprintf(", color = %s", input$color))
+    }
+    code <- paste0(code, ")) +\n")
+    
+    if (input$bplot) {
+      code <- paste0(code, "  geom_smooth(se = FALSE) +\n  geom_point(position = position_dodge(0.8)) +\n")
+    } else {
+      code <- paste0(code, "  geom_point(position = position_dodge(0.8)) +\n")
+    }
+    
+    code <- paste0(code, sprintf("  xlab('%s') +\n  ylab('%s')", input$xvar, input$yvar))
+    
+    if (input$facet != "None") {
+      code <- paste0(code, sprintf(" +\n  facet_wrap(~ %s) +\n", input$facet))
+      code <- paste0(code, sprintf("  labs(title = 'Plot of %s by %s and Faceted by type of %s')", input$yvar, input$xvar, input$facet))
+    }
+    
+    code
+  })
+  
+  # Output the plot code to the UI
+  output$plotCode <- renderText({
+    req(plotCode())
+    plotCode()  # Display the dynamically generated R code for plotting
+  })
+  
   # Generate plot based on the filtered data
   output$Plot <- renderPlot({
     plotData <- filteredData()
     
-    if (input$bplot == "TRUE"){
-      myplot <- ggplot(data = plotData, aes_string(x = input$xvar, y = input$yvar, color=input$color)) +
-        geom_smooth(se=FALSE) +
-        geom_point(position=position_dodge(0.8)) +
-        xlab(input$xvar) + ylab(input$yvar)
+    if (input$color == "None") {
+      color_aes <- NULL
     } else {
-      myplot <- ggplot(data = plotData, aes_string(x = input$xvar, y = input$yvar, color=input$color)) +
-        geom_point(position=position_dodge(0.8)) +
-        xlab(input$xvar) + ylab(input$yvar)
+      color_aes <- aes_string(color = input$color)
+    }
+    
+    myplot <- ggplot(data = plotData, aes_string(x = input$xvar, y = input$yvar)) +
+      xlab(input$xvar) + ylab(input$yvar)
+    
+    if (!is.null(color_aes)) {
+      myplot <- myplot + color_aes
+    }
+    
+    if (input$bplot) {
+      myplot <- myplot + geom_smooth(se = FALSE) + geom_point(position = position_dodge(0.8))
+    } else {
+      myplot <- myplot + geom_point(position = position_dodge(0.8))
     }
     
     if (input$facet != "None") {
       myplot <- myplot + facet_wrap(as.formula(paste("~", input$facet))) +
-        labs(title = paste("Plot of ",input$yvar, "by",input$xvar, "and Faceted by type of", input$facet))
+        labs(title = paste("Plot of ", input$yvar, "by", input$xvar, "and Faceted by type of", input$facet))
     }
     
     myplot
   })
 }
 
-
-#Running Shiny App
+# Running Shiny App
 shinyApp(ui = ui, server = server)
