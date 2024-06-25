@@ -1,0 +1,362 @@
+---
+title: "Introduction to Data Visualization with `ggplot2`"
+output:
+  learnr::tutorial:
+    progressive: true
+    allow_skip: true
+runtime: shiny_prerendered
+---
+
+
+```{r setup, include=FALSE}
+library(learnr)
+library(ggplot2)
+library(mosaic)
+library(dplyr)
+
+ALL_AS_EXERCISE = TRUE  # switch between interactive online activities (true means interactive)
+EVAL_HO_BLOCKS  = FALSE # code that only executes in student handouts
+FIG_HEIGHT = 2
+
+# Read data from greenhouse game 
+GreenHouse<- readr::read_csv("https://www.stat2games.sites.grinnell.edu/data/greenhouse/getdata.php") 
+GreenHouse <- select(GreenHouse, Crop, Money, Water, Nitrates, Yield, Profit)
+
+colleges <- read.csv("https://remiller1450.github.io/data/Colleges2019.csv")
+```
+
+
+
+<!-- START_SECTION -->
+## Getting Started
+
+This online tutorial is designed to introduce you to data visualization and how to create high quality graphics using the `ggplot2` package.
+
+### Packages and Datasets
+
+You will need the following packages to complete this tutorial:
+
+```{r load_packages, eval = EVAL_HO_BLOCKS}
+# install.packages("ggplot2")
+library(ggplot2)
+```
+
+You will also need the following datasets:
+
+```{r load_datasets, eval = EVAL_HO_BLOCKS}
+# Read data from greenhouse game
+GreenHouse<- readr::read_csv("https://www.stat2games.sites.grinnell.edu/data/greenhouse/getdata.php") 
+GreenHouse <- select(GreenHouse, Crop, Money, Water, Nitrates, Yield, Profit)
+
+# Read other data (you can read them later in the lab)
+# colleges <- read.csv("https://remiller1450.github.io/data/Colleges2019.csv")
+# approval <- read.csv("https://bit.ly/398YR6M")
+```
+
+**Note:** In this tutorial we will use "cleaned data"; you will learn how to manipulate data prior to graphing in subsequent tutorials.
+<!-- END_SECTION -->
+
+
+<!-- START_SECTION -->
+## Introduction
+
+This tutorial will focus on creating graphs to effectively communicate key patterns within a dataset. While many software packages allow the user to make basic plots, it can be challenging to create plots that are customized to address a specific idea. There are numerous ways to create graphs, however this tutorial will focus on the `R` package `ggplot2`, created by Hadley Wickham.
+
+The key function used in `ggplot2` is `ggplot()` (the *grammar of graphics plot*). This function is different from other graphics functions because it uses a particular grammar inspired by Leland Wilkinson's landmark book, *The Grammar of Graphics*, that focused on thinking about, reasoning with and communicating with graphics. It enables layering of independent components to create custom graphics.
+
+**Data**: In this tutorial, we will use the [data](https://stat2games.sites.grinnell.edu/data/greenhouse/greenhouse.php) from [Greenhouse Game](https://stat2games.sites.grinnell.edu/), which provides yielding information in a virtual greenhouse. 
+
+To start, we've paired down the dataset to focus on just a few variables:
+
+ * `Crop`: The type of crops (Beans, Corn, or Tomato) planted in a plot
+ * `Money`: The amount of money that the player currently have (start with 5000; calculated each season)
+ * `Water`: The amount of water (in inches) that you assign to a plot
+ * `Nitrate`: The amount of nitrates that exists within a plot
+ * `Yield`: The amount of crops produced on a plot
+ * `Profit`: The amount of money you earned on a plot
+ 
+Run the following code to get a peak of the Greenhouse data:
+
+```{r display_data, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE}
+# The code below uses the head() function to view the first four lines of the Greenhouse data.
+head(GreenHouse, 4)
+```
+<!-- END_SECTION -->
+
+
+<!-- START_SECTION -->
+## Overview of the `ggplot2` Framework
+
+### Terminology
+The `ggplot2` framework is unique because all graphics are grammatically defined using the following terminology:
+
+ * **Geometric Elements** (or "**geom**"): this determines the type of geometric shape used to display the data (i.e. lines, bars, points, areas, etc.)
+ * **Aesthetics** (or "**aes**"): this determines how variables in the data are mapped to visual properties of **geom**s (i.e. $x$ position, $y$ position, color, shape, fill, size, etc.)
+ * **Scales**: guidelines for how aesthetic mappings should be displayed (i.e. logarithmic $x$-axis, red to blue color palate, etc.)
+ * **Guides** (or "legends"): references to help a human reader interpret the aesthetics
+ * **Facets**: rules specifying how to break up and separately display subsets of data
+
+### The Structure of the `ggplot` Function
+All `ggplot` functions must have at least three components:
+
+ * **data**: specifies what to plot; this could be via the inclusion of a data frame, or explicitly specified as needed,
+ * **geom**: specifies what type of plot, and
+ * **aes**: specifies how to plot the data.
+
+Thus the structure of a graphic made with `ggplot()` could have the following form:
+
+<h4 style = "text-align: center;" markdown = "1"> ggplot(data = , mapping = aes(x = , y = )) + geom_***() </h4>
+
+In the following histogram we use `Water` as the $x$ variable:
+
+```{r example_hist_1, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, message = FALSE}
+ggplot(data = GreenHouse, mapping = aes(x = Water)) + geom_histogram()
+```
+
+In the above code, the terms `data =` and `mapping =` are not required (nor is `x =` since it is a one variable plot), but are used for clarification. For example, the following code will produce the same result:
+
+```{r example_hist_2, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, message = FALSE}
+ggplot(GreenHouse, aes(Water)) + geom_histogram()
+```
+
+**Note:** The terms `data =` and `mapping =` are not required if and only if both are supplied in the appropriate order; the first and second arguments are always presumed to be `data` and `mapping`, respectively (unless otherwise specified).
+
+### How `ggplot2` Creates Graphics
+
+The `ggplot2` package builds graphics in a structured manner using layers. Layers are sequentially added to a graph, with each serving a particular purpose, such as:
+1. Displaying raw data
+2. Displaying a statistical summary
+3. Adding metadata (i.e. annotations, context, references, etc.)
+
+Consider the following examples:
+
+#### Example 1.1a - nothing (just a base layer)
+
+```{r example_base_layer_1_1, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+ggplot()
+```
+
+#### Example 1.1b - again a base layer, but now with specified data and axes
+
+```{r example_base_layer_1_2, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield))
+```
+
+#### Example 1.2 - add a layer displaying raw data, here as a scatter plot with "points"
+
+```{r example_add_layer_1, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield)) +
+  geom_point()
+```
+
+Notice the addition of the "+" sign after the first line, this indicates that an additional layer will follow.
+
+#### Example 1.3 - add another layer (a smooth fit)
+
+```{r example_add_layer_2, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield)) +
+  geom_point() +
+  geom_smooth()
+```
+
+#### Example 1.4 - add another layer (reference text)
+
+```{r example_add_layer_3, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield)) +
+  geom_point() +
+  geom_smooth() +
+  annotate("text", x = 75, y = 20, label = "Yield Data based on Different Water Levels")
+```
+
+**Note:** A high-quality graphic doesn't require any particular number of layers. In fact, more layers can sometimes detract from the clarity of a data visualization.
+
+### More on the Base Layer
+
+The data and mapping arguments provided in the base layer are carried forward to all subsequent layers (which is often desirable). However, we can avoid this behavior in a variety of ways:
+
+#### Example 2.1 - distinguishing data points by the type of crop with a color aesthetic
+
+```{r example_more_base_layer_1, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield, color = Crop)) +
+  geom_point()
+```
+
+#### Example 2.2 - a local override of the color aesthetic
+
+```{r example_more_base_layer_2, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield, color = Crop)) +
+  geom_point(color = "red")
+```
+
+#### Example 2.3 - specifying aesthetics locally within layers
+
+```{r example_more_base_layer_3, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+ggplot(data = GreenHouse) +
+  geom_point(mapping = aes(x = Water, y = Yield, color = Crop)) +
+  geom_smooth(mapping = aes(x = Water, y = Yield, color = Crop))
+```
+
+Local aesthetic specification is most useful when you want to add layers that involve the same parameters ("$x$" and "$y$") but for different things. Common examples are drawing a line through several different group means of an ordinal categorical variable, or displaying both polygons and points on a map.
+
+#### Example 2.4 - specifying data locally within layers
+
+```{r example_more_base_layer_4, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+ggplot(mapping = aes(x = Water, y = Yield)) +
+  geom_point(data = subset(GreenHouse, Crop == "Tomato"), color = "red") +
+  geom_point(data = subset(GreenHouse, Crop == "Beans"),   color = "blue")
+```
+
+Local data specification is most useful when you want to include data from different sources (that again use the same parameters).
+
+<!-- START_QUESTION -->
+#### Question #1:
+
+Identify and briefly describe each term mentioned above in the graphic created by the code below:
+
+```{r question_code_parts, eval = TRUE, warning = FALSE, fig.height = 3}
+## Data processing
+colleges <- read.csv("https://remiller1450.github.io/data/Colleges2019.csv")
+
+## Creating the graph
+ggplot(data = colleges, mapping = aes(x = Adm_Rate, color = Private)) +
+  geom_density() +
+  scale_x_continuous(trans = "reverse") +
+  facet_wrap(~Region)
+```
+<!-- END_QUESTION -->
+
+<!-- START_QUESTION -->
+#### Question #2:
+
+Create a histogram of the variable "Enrollment" displayed on the log2-scale and faceted by the variable "Private". Use the ggplot2 cheatsheet to help you identify the necessary functions and arguments.
+<!-- END_QUESTION -->
+<!-- END_SECTION -->
+
+
+<!-- START_SECTION -->
+## Themes
+Themes are pre-built style templates used to better tailor a graphic to the mode of publication.
+
+The example below applies a black and white theme to Example 2.1 from above:
+
+```{r example_theme_1, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield, color = Crop)) +
+  geom_point() +
+  theme_bw()
+```
+
+Other pre-built themes:
+
+ * `theme_bw()`
+ * `theme_linedraw()`, `theme_light()`, and `theme_dark()`
+ * `theme_minimal()`
+ * `theme_classic()`
+ * `theme_void()`
+
+You can judge the differences in these themes below:
+
+```{r, echo = FALSE, fig.height = 4}
+library(patchwork)
+x <- c(1, 2, 3)
+y <- c(1, 2, 3)
+plot1 <- ggplot(mapping = aes(x = x, y = y)) +
+           geom_point() +
+           labs(title = "theme_grey()") +
+           theme_grey() +
+           theme(plot.title = element_text(hjust = 0.5))
+plot2 <- ggplot(mapping = aes(x = x, y = y)) +
+           geom_point() +
+           labs(title = "theme_bw()") +
+           theme_bw() +
+           theme(plot.title = element_text(hjust = 0.5))
+plot3 <- ggplot(mapping = aes(x = x, y = y)) +
+           geom_point() +
+           labs(title = "theme_linedraw()") +
+           theme_linedraw() +
+           theme(plot.title = element_text(hjust = 0.5))
+plot4 <- ggplot(mapping = aes(x = x, y = y)) +
+           geom_point() +
+           labs(title = "theme_light()") +
+           theme_light() +
+           theme(plot.title = element_text(hjust = 0.5))
+plot5 <- ggplot(mapping = aes(x = x, y = y)) +
+           geom_point() +
+           labs(title = "theme_dark()") +
+           theme_dark() +
+           theme(plot.title = element_text(hjust = 0.5))
+plot6 <- ggplot(mapping = aes(x = x, y = y)) +
+           geom_point() +
+           labs(title = "theme_minimal()") +
+           theme_minimal() +
+           theme(plot.title = element_text(hjust = 0.5))
+plot7 <- ggplot(mapping = aes(x = x, y = y)) +
+           geom_point() +
+           labs(title = "theme_classic()") +
+           theme_classic() +
+           theme(plot.title = element_text(hjust = 0.5))
+plot8 <- ggplot(mapping = aes(x = x, y = y)) +
+           geom_point() +
+           labs(title = "theme_void()") +
+           theme_void() +
+           theme(plot.title = element_text(hjust = 0.5))
+(plot1 | plot2 | plot3 | plot4) / (plot5 | plot6 | plot7 | plot8)
+```
+
+Any theme can be further customized using `theme()`. Most commonly this function is used to remove a graph's legend:
+
+```{r example_theme_3, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield, color = Crop)) +
+  geom_point() +
+  theme_bw() +
+  theme(legend.position = "none")
+```
+
+<!-- START_QUESTION -->
+#### Question #3:
+
+The code below creates a line graph that depicts (via a smoothed moving average) the approval of former presidents Jimmy Carter, Ronald Reagan, and Barrack Obama. Modify second portion of this code to try out a few different non-default themes. Then, briefly discuss (1-2 sentences) which themes you feel are most effective and least effective for this type of graph. Include the graph with your preferred theme in your lab write-up.
+
+```{r example_theme_4, eval = TRUE, fig.height = 3}
+## Data processing
+approval <- read.csv("https://bit.ly/398YR6M")
+approval$Week = as.numeric(difftime(as.Date(approval$End.Date, "%m/%d/%y"), as.Date(approval$Inaug.Date, "%m/%d/%y"), units = "weeks"))
+approval2 = subset(approval, President %in% c("Reagan", "Carter", "Obama"))
+
+## Creating the graph
+ggplot(data = approval2, mapping = aes(x = Week, y = Approving, color = President)) +
+ geom_smooth(method = "loess", span = 0.6, se = FALSE)
+```
+<!-- END_QUESTION -->
+<!-- END_SECTION -->
+
+
+<!-- START_SECTION -->
+## Labels and Annotations
+Labels and annotations are important aspects of well-constructed data visualizations. They are used to provide context, or draw the viewer's attention towards particular aspects of the graphic.
+
+Labels corresponding to *aesthetics* (such as `x`, `y`, `color`, etc.) are controlled using the `labs()` function:
+
+```{r labels_1, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield, color = Crop)) +
+  geom_point() +
+  theme_bw() +
+  labs(x = "Water Level", y = "Yield", color = "Crop")
+```
+
+Annotations are added the graphic as a layer using the `annotate()` function:
+
+```{r labels_2, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield, color = Crop)) +
+  geom_point() +
+  theme_bw() +
+  labs(x = "Water Level", y = "Yield", color = "Crop") +
+  annotate(geom = "rect", xmin = 20, xmax = 40, ymin = 10, ymax = 25, color = "red", alpha = 0.2)
+```
+
+The example above annotates a scatter plot by drawing a red rectangle with 20% transparency (controlled by `alpha = `) around the cluster of the most corns
+
+#### Question #4:
+
+Use the `subset()` function to create a data frame containing only colleges located in the state of Iowa. Using these data, create a box plot of admissions rates, rename the $x$-axis label to "Admissions Rate", and add a text annotation above the outlier saying "Grinnell".
+<!-- END_SECTION -->
+
