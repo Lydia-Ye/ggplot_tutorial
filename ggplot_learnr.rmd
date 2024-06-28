@@ -13,6 +13,7 @@ library(learnr)
 library(ggplot2)
 library(mosaic)
 library(dplyr)
+library(easydox)
 
 ALL_AS_EXERCISE = TRUE  # switch between interactive online activities (true means interactive)
 EVAL_HO_BLOCKS  = FALSE # code that only executes in student handouts
@@ -553,6 +554,61 @@ The example above annotates a scatter plot by drawing a red rectangle with 20% t
 
 <!-- START_SECTION -->
 ## Residual Plot
+
+In the previous part, we have learnt about adding a regression line to our graph. However, notice that there are various points that do not fall on the line. In fact, most of them don't. How do we visualize the distance of each point to the fitted line. Here, we will draw residual plots that can show us the distribution of the residuals of the points in our data. 
+
+```{r residual_plost1, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE}
+myModel <- lm(Yield ~ Water, data = GreenHouse)
+res <- resid(myModel)
+
+# Create histogram of residuals
+hist(res, main = "Histogram of Residuals", xlab = "Residuals")
+```
+
+```{r residual_plost2, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE }
+myModel <- lm(Yield ~ Water, data = GreenHouse)
+res <- resid(myModel)
+
+# Create normall qq plot
+qqnorm(res, main = "Normal Q-Q Plot of Residuals")
+qqline(res)
+```
+
+```{r residual_plost3, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE }
+myModel <- lm(Yield ~ Water, data = GreenHouse)
+res <- resid(myModel)
+
+# Create plot of Water vs Residuals
+plot(GreenHouse$Water, res, 
+     main = "Water vs. Residuals",
+     xlab = "Water", 
+     ylab = "Residuals")
+abline(h = 0)
+```
+
+We can also combine all 3 plots into a page by using `par(mfrow = c(2,2))`
+
+```{r residual_plost4, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE }
+myModel <- lm(Yield ~ Water, data = GreenHouse)
+res <- resid(myModel)
+par(mfrow = c(2,2))
+
+# Create histogram of residuals
+hist(res, main = "Histogram of Residuals", xlab = "Residuals")
+
+# Create normall qq plot
+qqnorm(res, main = "Normal Q-Q Plot of Residuals")
+qqline(res)
+
+# Create plot of Water vs Residuals
+plot(GreenHouse$Water, res, 
+     main = "Water vs. Residuals",
+     xlab = "Water", 
+     ylab = "Residuals")
+abline(h = 0)
+```
+
+
 <!-- END_SECTION -->
 
 
