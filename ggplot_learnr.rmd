@@ -197,7 +197,7 @@ ggplot(aes(x = Water, y = Yield), data = GreenHouse) +
 <!-- END_SECTION -->
 
 <!-- START_SECTION -->
-## Layering graphs with ggplot2
+## Layering Graphs with ggplot2
 
 While many software packages allow the user to make basic plots, it can be challenging to create plots that are customized to address a specific idea. However, the `ggplot2` package builds graphics in a structured manner using layers, so it enables independent components to be layered to create custom graphics.
 
@@ -281,7 +281,7 @@ ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield, color = Crop)) +
   geom_point(color = "red")
 ```
 
-Instead of apply aesthetic to the base layer, we can also apply locally within layers instead of adding to the base layer. This allows for different aesthetics to be applied to different layers of the same plot.
+Instead of apply aesthetic to the base layer, we can also apply locally within layers. This allows for different aesthetics to be applied to different layers of the same plot.
 
 #### Example 1.3 - specifying aesthetics locally within layers
 
@@ -325,7 +325,7 @@ ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield)) +
 ```
 
 ### Other Aesthetics
-Now, let's look some other ways to adjust the aesthetics of our plot.
+Now, let's look at some other ways to adjust the aesthetics of our plot.
 
 #### Example 3.1 - adjusting transparency (`alpha`) of data points
 ```{r example_aes1, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
@@ -334,14 +334,14 @@ ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield)) +
   geom_point(alpha = 0.5)
 ```
 
-#### Example 3.2 - adjusting size of data points
+#### Example 3.2 - adjusting `size` of data points
 ```{r example_aes2, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
 # The code below adjusts the size of all data points
 ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield)) +
   geom_point(size = 0.5)
 ```
 
-#### Example 3.3 - adjusting shape of data points
+#### Example 3.3 - adjusting `shape` of data points
 ```{r example_aes3, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
 # The code below adjusts the shape of all data points to square
 ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield)) +
@@ -360,14 +360,14 @@ Here are some other commonly used values for `shape`:
   * shape = 9, diamond plus
   * shape = 10, circle plus
 
-#### Example 3.4 - distinguishing data points by the type of crop with different shape of data points
+#### Example 3.4 - distinguishing data points by the type of crop with different `shape` of data points
 ```{r example_aes4, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
 # The code below applies a distinct shape to the data points of each crops
 ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield, shape = Crop)) +
   geom_point()
 ```
 
-#### Example 3.5 - Adjusting linetype
+#### Example 3.5 - Adjusting `linetype`
 ```{r example_aes5, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
 # The code below adjusts the linetype for the regression line 
 ggplot(aes(x = Water, y = Yield), data = GreenHouse) +
@@ -555,30 +555,33 @@ The example above annotates a scatter plot by drawing a red rectangle with 20% t
 <!-- START_SECTION -->
 ## Residual Plot
 
+
 In the previous part, we have learnt about adding a regression line to our graph. However, notice that there are various points that do not fall on the line. In fact, most of them don't. How do we visualize the distance of each point to the fitted line. Here, we will draw residual plots that can show us the distribution of the residuals of the points in our data. 
 
+First, let's start with a simple linear regression model to predict Yield from Water and draw the residual plots of it. To fit a linear regression model in R, we will use the function `lm()`. Then, we can use `resid` to extract model residuals from the model returned by `lm()`.
+
+### Generate residuals from linear regression model and create a histogram of residuals
 ```{r residual_plost1, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE}
 myModel <- lm(Yield ~ Water, data = GreenHouse)
 res <- resid(myModel)
 
-# Create histogram of residuals
 hist(res, main = "Histogram of Residuals", xlab = "Residuals")
 ```
 
+### Create Normal Q-Q Plot of Residuals
 ```{r residual_plost2, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE }
 myModel <- lm(Yield ~ Water, data = GreenHouse)
 res <- resid(myModel)
 
-# Create normall qq plot
 qqnorm(res, main = "Normal Q-Q Plot of Residuals")
 qqline(res)
 ```
 
+### Create plot of Water vs Residuals
 ```{r residual_plost3, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE }
 myModel <- lm(Yield ~ Water, data = GreenHouse)
 res <- resid(myModel)
 
-# Create plot of Water vs Residuals
 plot(GreenHouse$Water, res, 
      main = "Water vs. Residuals",
      xlab = "Water", 
@@ -588,18 +591,16 @@ abline(h = 0)
 
 We can also combine all 3 plots into a page by using `par(mfrow = c(2,2))`
 
+### Combine the above residual plots
 ```{r residual_plost4, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE }
 myModel <- lm(Yield ~ Water, data = GreenHouse)
 res <- resid(myModel)
 par(mfrow = c(2,2))
-
 # Create histogram of residuals
 hist(res, main = "Histogram of Residuals", xlab = "Residuals")
-
 # Create normall qq plot
 qqnorm(res, main = "Normal Q-Q Plot of Residuals")
 qqline(res)
-
 # Create plot of Water vs Residuals
 plot(GreenHouse$Water, res, 
      main = "Water vs. Residuals",
@@ -609,9 +610,61 @@ abline(h = 0)
 ```
 
 
+### Exercise 5: Add residual plots 
+#### a. Fit a linear regression model to predict profit from water and extract the model residuals.
+```{r exercise5a, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+# Write your code here
+
+```
+
+#### b. Create a plot of water versus residuals 
+
+```{r exercise5b, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+# Write your code here
+
+```
+
 <!-- END_SECTION -->
 
 
 <!-- START_SECTION -->
 ## Let’s test your skills!
+Here are two apps that helps you do the data wrangling and create visualizations using Greenhouse data. Feel free to play around with them to generate different plots you like and observe the code behind the plots!
+```{r, echo=FALSE}
+# knitr::include_app("https://shiny.grinnell.edu/psychic1/", height = "500px")
+```
+
+### Exercise 6: Try to create the following plots on you own and check your answers using the above apps.
+#### a. 
+```{r echo =FALSE}
+# Remove `method = "lm”, se = FALSE`
+ggplot(aes(x = Water, y = Yield, shape = Crop, color = Crop), data = GreenHouse) +
+  geom_point() +
+  facet_wrap(~Level) +
+  theme_light() +
+  theme(
+    axis.title.x = element_text(size = 14, face = "italic", color = "darkblue"),
+    axis.title.y = element_text(size = 14, face = "italic", color = "darkblue"),
+    axis.text = element_text(size = 12)
+  )
+```
+
+```{r exercise6a, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+# Write your code here
+
+```
+
+#### b. 
+```{r echo =FALSE}
+# Remove `method = "lm”, se = FALSE`
+ggplot(aes(x = Water, y = Profit, color = Level), data = GreenHouse) +
+  geom_point() +
+  facet_wrap(~Crop)
+```
+
+```{r exercise6b, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
+# Write your code here
+
+```
+
 <!-- END_SECTION -->
