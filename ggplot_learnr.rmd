@@ -21,8 +21,10 @@ FIG_HEIGHT = 2
 
 # Read data from greenhouse game 
 GreenHouse<- read.csv("https://www.stat2games.sites.grinnell.edu/data/greenhouse/getdata.php") 
-GreenHouse <- select(GreenHouse, GroupID, PlayerID, Plot, Level, Crop, Money, Water, Nitrates, Yield, Profit)
-sample1 <- GreenHouse[GreenHouse$GroupID == "sample1", ]
+GreenHouse <- select(GreenHouse, GroupID, PlayerID, Plot,Season, Level, Crop, Money, Water, Nitrates, Yield, Profit)
+sample1 <- read.csv("Sample1_data.csv")
+sample1 <- select(sample1, GroupID, PlayerID, Plot,Season, Level, Crop, Money, Water, Nitrates, Yield, Profit)
+
 ```
 
 
@@ -44,12 +46,12 @@ library(ggplot2)
 You will also need the following datasets:
 
 ```{r load_datasets, exercise = ALL_AS_EXERCISE, eval = EVAL_HO_BLOCKS}
-# Read data from greenhouse game
+# Read online data from greenhouse game
 GreenHouse<- read.csv("https://www.stat2games.sites.grinnell.edu/data/greenhouse/getdata.php") 
 GreenHouse <- select(GreenHouse, GroupID, PlayerID, Plot, Level, Crop, Money, Water, Nitrates, Yield, Profit)
 
-# Get sample1 data
-sample1 <- GreenHouse[GreenHouse$GroupID == "sample1", ]
+# Sample data for greenhouse game
+sample1
 ```
 
 <!-- END_SECTION -->
@@ -60,7 +62,7 @@ sample1 <- GreenHouse[GreenHouse$GroupID == "sample1", ]
 
 This tutorial will focus on creating graphs to effectively communicate key patterns within a dataset. There are numerous ways to create graphs, however this tutorial will focus on the R package ggplot2, created by Hadley Wickham. The key function used in `ggplot2` is `ggplot()` (the *grammar of graphics plot*). This function is different from other graphics functions because it uses a particular grammar inspired by Leland Wilkinson’s landmark book, *The Grammar of Graphics*, which focuses on thinking about, reasoning with, and communicating with graphics. 
 
-**Data**: In this tutorial, we will use the [data](https://stat2games.sites.grinnell.edu/data/greenhouse/greenhouse.php) from the [Greenhouse Game](https://stat2games.sites.grinnell.edu/), which provides yielding information in a virtual greenhouse. 
+**Data**: In this tutorial, we will use the [data](https://stat2games.sites.grinnell.edu/data/greenhouse/greenhouse.php) from the [Greenhouse Game](https://stat2games.sites.grinnell.edu/), which provides yielding information in a virtual greenhouse. Specifically, in the most of given examples, we will be using the sample1 data from Greenhouse data.
 
 To start, we've paired down the dataset to focus on just a few variables:
 
@@ -91,8 +93,8 @@ table(sample1)
 ```
 
 ```{r display_summary_stats, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE}
-# The code below used the favstats() command to see summary statistics of 'Money' variable in the  Greenhouse data.
-favstats(GreenHouse$Money)
+# The code below used the favstats() command to see summary statistics of 'Money' variable in the Greenhouse sample1 data.
+favstats(sample1$Money)
 ```
 <!-- END_SECTION -->
 
@@ -101,9 +103,10 @@ favstats(GreenHouse$Money)
 <!-- START_SECTION -->
 ## Our First Graph
 
-If you worked through the previous lab, you have already used an app to create a scatterplot of the sample1 data (there is no data in the group sample1, so the plot is not showing anything).
+If you worked through the previous lab, you have already used an app to create a scatterplot of the sample1 data.
 ```{r display_plot, echo = FALSE}
 ggplot(aes(x = Water, y = Yield), data = sample1) +
+  labs(title="Water versus Yield") +
   geom_point() 
 ```
 
@@ -183,7 +186,7 @@ Now, we can put each piece in its place in the template and then run the code to
 # The code below uses ggplot() and geom_point() to create a scatterplot of Water versus Yield
 # ggplot(aes(x = Water, y = Yield), data = sample1) +
 #   geom_point()
-ggplot(aes(x = Water, y = Yield), data = GreenHouse) +
+ggplot(aes(x = Water, y = Yield), data = sample1) +
   geom_point() 
 ```
 
@@ -207,7 +210,7 @@ Now, let's add some additional details and functions to our plot. For example, w
 
 ```{r add_regline, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
 # The code below adds a linear regression line to the scatterplot or water versus yield
-ggplot( aes(x = Water, y = Yield), data = GreenHouse) +
+ggplot( aes(x = Water, y = Yield), data = sample1) +
   geom_point() +
   geom_smooth(method = "lm", se = FALSE)
 ```
@@ -219,7 +222,7 @@ ggplot( aes(x = Water, y = Yield), data = GreenHouse) +
 
 ```{r exercise2a, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
 # Remove `,se=FALSE`
-ggplot( aes(x = Water, y = Yield), data = GreenHouse) +
+ggplot( aes(x = Water, y = Yield), data = sample1) +
   geom_point() +
   geom_smooth(method = "lm")
 ```
@@ -229,7 +232,7 @@ ggplot( aes(x = Water, y = Yield), data = GreenHouse) +
 
 ```{r exercise2b, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
 # Remove `method = "lm”, se = FALSE`
-ggplot( aes(x = Water, y = Yield), data = GreenHouse) +
+ggplot( aes(x = Water, y = Yield), data = sample1) +
   geom_point() +
   geom_smooth()
 ```
@@ -238,7 +241,7 @@ ggplot( aes(x = Water, y = Yield), data = GreenHouse) +
 
 ```{r exercise2c, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
 # Add `, formula = y ~ poly(x, 2)` after `method = "lm` to create a quadratic line
-ggplot( aes(x = Water, y = Yield), data = GreenHouse) +
+ggplot( aes(x = Water, y = Yield), data = sample1) +
   geom_point() +
   geom_smooth(method = "lm", formula = y ~ poly(x, 2), se=FALSE)
 ```
@@ -247,7 +250,7 @@ ggplot( aes(x = Water, y = Yield), data = GreenHouse) +
 
 ```{r exercise2d, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
 # Add `, formula = y ~ poly(x, 2)` and remove `,se=FALSE`
-ggplot( aes(x = Water, y = Yield), data = GreenHouse) +
+ggplot( aes(x = Water, y = Yield), data = sample1) +
   geom_point() +
   geom_smooth(method = "lm", formula = y ~ poly(x, 2))
 ```
@@ -268,7 +271,7 @@ The following example shows how coloring helps distinguish between different cat
 
 #### Example 1.1 - distinguishing data points by the type of crop with a color aesthetic in the base layer
 ```{r example_more_base_layer_1, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
-ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield, color = Crop)) +
+ggplot(data = sample1, mapping = aes(x = Water, y = Yield, color = Crop)) +
   geom_point()
 ```
 
@@ -277,7 +280,7 @@ After adding the color aesthetics on the base layer, we can override aesthetics 
 #### Example 1.2 - a local override of the color aesthetic
 
 ```{r example_more_base_layer_2, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
-ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield, color = Crop)) +
+ggplot(data = sample1, mapping = aes(x = Water, y = Yield, color = Crop)) +
   geom_point(color = "red")
 ```
 
@@ -286,7 +289,7 @@ Instead of apply aesthetic to the base layer, we can also apply locally within l
 #### Example 1.3 - specifying aesthetics locally within layers
 
 ```{r example_more_base_layer_3, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
-ggplot(data = GreenHouse) +
+ggplot(data = sample1) +
   geom_point(mapping = aes(x = Water, y = Yield, color = Crop)) +
   geom_smooth(mapping = aes(x = Water, y = Yield, color = Crop))
 ```
@@ -297,8 +300,8 @@ Local aesthetic specification is most useful when you want to add layers that in
 
 ```{r example_more_base_layer_4, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
 ggplot(mapping = aes(x = Water, y = Yield)) +
-  geom_point(data = subset(GreenHouse, Crop == "Tomato"), color = "red") +
-  geom_point(data = subset(GreenHouse, Crop == "Beans"),   color = "blue")
+  geom_point(data = subset(sample1, Crop == "Tomato"), color = "red") +
+  geom_point(data = subset(sample1, Crop == "Beans"),   color = "blue")
 ```
 
 Local data specification is most useful when you want to include data from different sources (that again use the same parameters).
@@ -311,7 +314,7 @@ Faceting allows us to split our plot into multiple subplots based on the levels 
 #### Example 2.1 - Faceting by Crop
 ```{r example_facet1, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
 # The code below uses `facet_warp()` to split the plot based on Crop variable.
-ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield)) +
+ggplot(data = sample1, mapping = aes(x = Water, y = Yield)) +
   geom_point() +
   facet_wrap(~Crop)
 ```
@@ -319,7 +322,7 @@ ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield)) +
 #### Example 2.2 - Faceting by Level
 ```{r example_facet2, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
 # The code below uses `facet_warp()` to split the plot based on Level variable.
-ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield)) +
+ggplot(data = sample1, mapping = aes(x = Water, y = Yield)) +
   geom_point() +
   facet_wrap(~Level)
 ```
@@ -330,21 +333,21 @@ Now, let's look at some other ways to adjust the aesthetics of our plot.
 #### Example 3.1 - adjusting transparency (`alpha`) of data points
 ```{r example_aes1, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
 # The code below adjusts the transparency of all data points
-ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield)) +
+ggplot(data = sample1, mapping = aes(x = Water, y = Yield)) +
   geom_point(alpha = 0.5)
 ```
 
 #### Example 3.2 - adjusting `size` of data points
 ```{r example_aes2, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
 # The code below adjusts the size of all data points
-ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield)) +
+ggplot(data = sample1, mapping = aes(x = Water, y = Yield)) +
   geom_point(size = 0.5)
 ```
 
 #### Example 3.3 - adjusting `shape` of data points
 ```{r example_aes3, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
 # The code below adjusts the shape of all data points to square
-ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield)) +
+ggplot(data = sample1, mapping = aes(x = Water, y = Yield)) +
   geom_point(shape = 0)
 ```
 Here are some other commonly used values for `shape`:
@@ -363,14 +366,14 @@ Here are some other commonly used values for `shape`:
 #### Example 3.4 - distinguishing data points by the type of crop with different `shape` of data points
 ```{r example_aes4, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
 # The code below applies a distinct shape to the data points of each crops
-ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield, shape = Crop)) +
+ggplot(data = sample1, mapping = aes(x = Water, y = Yield, shape = Crop)) +
   geom_point()
 ```
 
 #### Example 3.5 - Adjusting `linetype`
 ```{r example_aes5, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
 # The code below adjusts the linetype for the regression line 
-ggplot(aes(x = Water, y = Yield), data = GreenHouse) +
+ggplot(aes(x = Water, y = Yield), data = sample1) +
   geom_point() +
   geom_smooth(method = "lm", se = FALSE, linetype = "dashed")
 ```
@@ -379,7 +382,7 @@ Other `linetype` values include "dotted", "dotdash", "longdash", "twodash", "sol
 
 ### Exercise 3: Use the given scatterplot to create following visualizations
 ```{r exercise3, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
-ggplot(aes(x = Water, y = Profit), data = GreenHouse) +
+ggplot(aes(x = Water, y = Profit), data = sample1) +
   geom_point()
 ```
 
@@ -414,7 +417,7 @@ Themes are pre-built style templates used to better tailor a graphic to the mode
 #### Example 4.1: applying bw theme
 ```{r example_theme_1, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
 # The code below applies the bw theme to the plot
-ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield, color = Crop)) +
+ggplot(data = sample1, mapping = aes(x = Water, y = Yield, color = Crop)) +
   geom_point() +
   theme_bw()
 ```
@@ -484,7 +487,7 @@ After applying the pre-built theme, we can also add customized features using `t
 #### Example 4.2: removing graph's legend from pre-built theme
 ```{r example_theme_3, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
 # The code below adds a bw theme and uses `theme()` to remove the graph's legend
-ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield, color = Crop)) +
+ggplot(data = sample1, mapping = aes(x = Water, y = Yield, color = Crop)) +
   geom_point() +
   theme_bw() +
   theme(legend.position = "none")
@@ -493,7 +496,7 @@ ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield, color = Crop)) +
 #### Example 4.3: adding customized features to the theme
 ```{r example_theme_4, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
 # The code below customizes font size, color, and type for title and axes
-ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield, color = Crop)) +
+ggplot(data = sample1, mapping = aes(x = Water, y = Yield, color = Crop)) +
   geom_point() +
   labs(title = "Yield vs Water", x = "Water", y = "Yield") +
   theme_minimal() +
@@ -531,7 +534,7 @@ Labels and annotations are important aspects of well-constructed data visualizat
 Labels corresponding to *aesthetics* (such as `x`, `y`, `color`, etc.) are controlled using the `labs()` function:
 
 ```{r labels_1, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
-ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield, color = Crop)) +
+ggplot(data = sample1, mapping = aes(x = Water, y = Yield, color = Crop)) +
   geom_point() +
   theme_bw() +
   labs(x = "Water Level", y = "Yield", color = "Crop")
@@ -540,7 +543,7 @@ ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield, color = Crop)) +
 Annotations are added the graphic as a layer using the `annotate()` function:
 
 ```{r labels_2, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
-ggplot(data = GreenHouse, mapping = aes(x = Water, y = Yield, color = Crop)) +
+ggplot(data = sample1, mapping = aes(x = Water, y = Yield, color = Crop)) +
   geom_point() +
   theme_bw() +
   labs(x = "Water Level", y = "Yield", color = "Crop") +
@@ -562,7 +565,7 @@ First, let's start with a simple linear regression model to predict Yield from W
 
 ### Generate residuals from linear regression model and create a histogram of residuals
 ```{r residual_plost1, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE}
-myModel <- lm(Yield ~ Water, data = GreenHouse)
+myModel <- lm(Yield ~ Water, data = sample1)
 res <- resid(myModel)
 
 hist(res, main = "Histogram of Residuals", xlab = "Residuals")
@@ -570,7 +573,7 @@ hist(res, main = "Histogram of Residuals", xlab = "Residuals")
 
 ### Create Normal Q-Q Plot of Residuals
 ```{r residual_plost2, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE }
-myModel <- lm(Yield ~ Water, data = GreenHouse)
+myModel <- lm(Yield ~ Water, data = sample1)
 res <- resid(myModel)
 
 qqnorm(res, main = "Normal Q-Q Plot of Residuals")
@@ -579,10 +582,10 @@ qqline(res)
 
 ### Create plot of Water vs Residuals
 ```{r residual_plost3, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE }
-myModel <- lm(Yield ~ Water, data = GreenHouse)
+myModel <- lm(Yield ~ Water, data = sample1)
 res <- resid(myModel)
 
-plot(GreenHouse$Water, res, 
+plot(sample1$Water, res, 
      main = "Water vs. Residuals",
      xlab = "Water", 
      ylab = "Residuals")
@@ -593,7 +596,7 @@ We can also combine all 3 plots into a page by using `par(mfrow = c(2,2))`
 
 ### Combine the above residual plots
 ```{r residual_plost4, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE }
-myModel <- lm(Yield ~ Water, data = GreenHouse)
+myModel <- lm(Yield ~ Water, data = sample1)
 res <- resid(myModel)
 par(mfrow = c(2,2))
 # Create histogram of residuals
@@ -602,7 +605,7 @@ hist(res, main = "Histogram of Residuals", xlab = "Residuals")
 qqnorm(res, main = "Normal Q-Q Plot of Residuals")
 qqline(res)
 # Create plot of Water vs Residuals
-plot(GreenHouse$Water, res, 
+plot(sample1$Water, res, 
      main = "Water vs. Residuals",
      xlab = "Water", 
      ylab = "Residuals")
@@ -630,6 +633,8 @@ abline(h = 0)
 <!-- START_SECTION -->
 ## Let’s test your skills!
 Here are two apps that helps you do the data wrangling and create visualizations using Greenhouse data. Feel free to play around with them to generate different plots you like and observe the code behind the plots!
+
+(need the link for the shiny apps to be added here)
 ```{r, echo=FALSE}
 # knitr::include_app("https://shiny.grinnell.edu/psychic1/", height = "500px")
 ```
@@ -638,8 +643,9 @@ Here are two apps that helps you do the data wrangling and create visualizations
 #### a. 
 ```{r echo =FALSE}
 # Remove `method = "lm”, se = FALSE`
-ggplot(aes(x = Water, y = Yield, shape = Crop, color = Crop), data = GreenHouse) +
+ggplot(aes(x = Water, y = Yield, shape = Crop, color = Crop), data = sample1) +
   geom_point() +
+  labs(title = "Yield vs Water by Level", x = "Water", y = "Yield") +
   facet_wrap(~Level) +
   theme_light() +
   theme(
@@ -657,7 +663,8 @@ ggplot(aes(x = Water, y = Yield, shape = Crop, color = Crop), data = GreenHouse)
 #### b. 
 ```{r echo =FALSE}
 # Remove `method = "lm”, se = FALSE`
-ggplot(aes(x = Water, y = Profit, color = Level), data = GreenHouse) +
+ggplot(aes(x = Water, y = Money, color = Level), data = sample1) +
+  labs(title = "Money vs Water by Crop", x = "Water", y = "Money") +
   geom_point() +
   facet_wrap(~Crop)
 ```
@@ -666,5 +673,4 @@ ggplot(aes(x = Water, y = Profit, color = Level), data = GreenHouse) +
 # Write your code here
 
 ```
-
 <!-- END_SECTION -->
