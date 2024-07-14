@@ -9,7 +9,7 @@ data.all <- select(data.all, GroupID, PlayerID, Level, Season, SellPrice, BuyPri
 
 # Revenue/Costs/Profit
 data.all <- data.all %>% mutate(
-  Revenue = Money,
+  Revenue = SellPrice * Yield,
   Costs = BuyPrice + Water + ifelse((Nitrates - 250) / 10 < 0, 0, (Nitrates - 250) / 10),
   Profit = Revenue - Costs
 )
@@ -21,6 +21,7 @@ data.all$PlayerID <- as.character(data.all$PlayerID)
 
 all_groups <- sort(unique(data.all$GroupID))
 all_players <- sort(unique(data.all$PlayerID))
+View(data.all)
 
 # UI
 ui <- fluidPage(
@@ -82,7 +83,7 @@ ui <- fluidPage(
                   selectize = TRUE,
                   selected = "black"),
       
-      checkboxInput('bplot', "Add model", FALSE),
+      checkboxInput('bplot', "Remove Interaction", FALSE),
       
       downloadButton('downloadData', label = "Greenhouse Data")
     ),
@@ -90,15 +91,17 @@ ui <- fluidPage(
     mainPanel(
       tabsetPanel(
         tabPanel("Plot", 
-                 h4("Code for Data Visualization:"),
-                 verbatimTextOutput("plotCode"),
-                 plotOutput(outputId = "Plot")
+                 plotOutput(outputId = "Plot"),
+                 h4("Code for Data Cleaning:"),
+                 verbatimTextOutput("filterCode"),
+                 h4("Code for Data Visualizations:"),
+                 verbatimTextOutput("plotCode")
         ),
-        tabPanel("Residuals",
+        tabPanel("Residual Plot",
+                 plotOutput(outputId = "Residuals"),
                  h4("Code for Residual Plots:"),
-                 verbatimTextOutput("residualsCode"),
-                 plotOutput(outputId = "Residuals"))
-        )
+                 verbatimTextOutput("residualsCode"))
+      )
     )
   )
 )
@@ -113,22 +116,45 @@ server <- function(input, output, session) {
     # Filter by Group ID
     if (length(input$groupID) > 0) {
       if ("all" %in% input$groupID) {
-        data <- data.all
+        plotData <- data.all
       } else {
-        data <- data.all[data.all$GroupID %in% input$groupID, ]
+        plotData <- data.all[data.all$GroupID %in% input$groupID, ]
       }
     } else {
-      data <- data.all  # No filtering if no group selected
+      plotData <- data.all  # No filtering if no group selected
     }
     
     # Dynamically select columns based on user input for X and Y variables
     selected_columns <- unique(c("GroupID", "PlayerID", input$xvar, input$yvar, if(input$color != "None") input$color, "Level", if(input$facet != "None") input$facet))
-    data <- data[, selected_columns, drop = FALSE]
+    plotData <- plotData[, selected_columns, drop = FALSE]
     
-    data
+    plotData
   })
   
-
+  filterCode <- reactive({
+    req(input$groupID)  # Ensure Group ID input is available
+    
+    # Start building the R code for filtering
+    code <- "data <- readr::read_csv('https://www.stat2games.sites.grinnell.edu/data/greenhouse/getdata.php')\n"  # Start with the original dataset
+    
+    # Filter by Group ID
+    if (length(input$groupID) > 0) {
+      if ("all" %in% input$groupID) {
+        code <- paste0(code, "plotData <- data\n")
+      } else {
+        code <- paste0(code, sprintf("plotData <- data[data$GroupID %%in%% c('%s'), ]\n", paste(input$groupID, collapse = "', '")))
+      }
+    }
+    
+    # Code to select specific columns based on X and Y variables
+    selected_columns <- unique(c("GroupID", "PlayerID", input$xvar, input$yvar, if(input$color != "None") input$color, if(input$facet != "None") input$facet))
+    select_code <- paste("c('", paste(selected_columns, collapse = "', '"), "')", sep="")
+    code <- paste0(code, sprintf("plotData <- plotData[, %s, drop = FALSE]\n", select_code))
+    
+    code
+    
+  })
+  
   # Reactive expression to generate plot code
   plotCode <- reactive({
     req(input$xvar, input$yvar)
@@ -158,6 +184,11 @@ server <- function(input, output, session) {
     code <- paste0(code, sprintf(" +\n  theme(text = element_text(size = %s, color = '%s'))", input$fontsize, input$fontcolor))
     
     code
+  })
+  
+  output$filterCode <- renderText({
+    req(filterCode())
+    filterCode()
   })
   
   output$plotCode <- renderText({
@@ -203,9 +234,9 @@ server <- function(input, output, session) {
     model_code <- ""
     
     if (input$model == "Linear") {
-      model_code <- sprintf("lm(%s ~ %s, data = filteredData)", yvar, xvar)
+      model_code <- sprintf("lm(%s ~ %s, data = plotData)", yvar, xvar)
     } else if (input$model == "Quadratic") {
-      model_code <- sprintf("lm(%s ~ poly(%s, 2), data = filteredData)", yvar, xvar)
+      model_code <- sprintf("lm(%s ~ poly(%s, 2), data = plotData)", yvar, xvar)
     }
     
     code <- paste0(
@@ -221,7 +252,7 @@ server <- function(input, output, session) {
       "qqnorm(res, main = 'Normal Q-Q Plot of Residuals')\n",
       "qqline(res)\n\n",
       "# Create plot of ", xvar, " vs Residuals\n",
-      "plot(filteredData[['", xvar, "']], res, xlab = '", xvar, "', ylab = 'Residuals', main = paste('", xvar, " vs Residuals'))\n",
+      "plot(plotData[['", xvar, "']], res, xlab = '", xvar, "', ylab = 'Residuals', main = paste('", xvar, " vs Residuals'))\n",
       "abline(h = 0)"
     )
     
@@ -232,13 +263,13 @@ server <- function(input, output, session) {
     req(residualsCode())
     residualsCode()
   })
-    
+  
   output$Residuals <- renderPlot({
     shiny::validate(
       need(input$model != "None", "A statistical model must be selected before residuals can be calculated.")
     )
     
-    filteredData <- filteredData()
+    plotData <- filteredData()
     xvar <- input$xvar
     yvar <- input$yvar
     
@@ -246,9 +277,9 @@ server <- function(input, output, session) {
       "A statistical model must be selected before residuals can be calculated."
     } else {
       if (input$model == "Linear") {
-        myModel <- lm(as.formula(paste(yvar, "~", xvar)), data = filteredData)
+        myModel <- lm(as.formula(paste(yvar, "~", xvar)), data = plotData)
       } else if (input$model == "Quadratic") {
-        myModel <- lm(as.formula(paste(yvar, "~ poly(", xvar, ", 2)")), data = filteredData)
+        myModel <- lm(as.formula(paste(yvar, "~ poly(", xvar, ", 2)")), data = plotData)
       }
       
       res <- resid(myModel)
@@ -262,7 +293,7 @@ server <- function(input, output, session) {
       qqline(res)
       
       # Create plot of xvar vs Residuals
-      plot(filteredData[[xvar]], res, 
+      plot(plotData[[xvar]], res, 
            xlab = xvar, 
            ylab = "Residuals", 
            main = paste(xvar, "vs Residuals"))
