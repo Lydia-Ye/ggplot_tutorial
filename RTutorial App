@@ -69,7 +69,10 @@ ui <- fluidPage(
                   selectize = TRUE,
                   selected = "None"),
       
-      checkboxInput('bplot', "Remove Interaction", FALSE),
+      conditionalPanel(
+        condition = "input.model == 'Linear' && !(input.facet == 'Crop' && input.color == 'Crop')",
+        checkboxInput('bplot', "Remove Interaction", FALSE)
+      ),
       
       selectInput(inputId = "fontsize",
                   label = "Font Size:",
@@ -186,7 +189,7 @@ server <- function(input, output, session) {
 
     # add model
     if (input$model == "Linear") {
-      if (input$bplot && (input$color == "Crop" || input$color == "PlayerID" ) && (input$facet == "None")) {
+      if (input$bplot && (input$color == "Crop" || input$color == "PlayerID" )) {
         
         # Fit linear model with common slope but different intercepts
         lm_model <- lm(as.formula(paste(input$yvar, "~", input$xvar, "+", input$color)), data = plotData)
@@ -201,15 +204,16 @@ server <- function(input, output, session) {
             geom_abline(intercept = intercepts[i],
                         slope = slope)
         }
+        
+        if (input$facet != "None") {
+          myplot <- myplot + stat_smooth(method = "lm", se = FALSE, formula = y ~ x + input$color)
+        }
       } else {
         myplot <- myplot + geom_smooth(method = 'lm', se = FALSE) 
       }
       
     } else if (input$model == "Quadratic") {
-      if (!input$bplot) {
         myplot <- myplot + geom_smooth(method = 'lm', formula = y ~ poly(x, 2), se = FALSE) 
-      } 
-      
     } else {
       myplot <- myplot 
     }
