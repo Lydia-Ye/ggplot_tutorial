@@ -69,6 +69,8 @@ ui <- fluidPage(
                   selectize = TRUE,
                   selected = "None"),
       
+      checkboxInput('bplot', "Remove Interaction", FALSE),
+      
       selectInput(inputId = "fontsize",
                   label = "Font Size:",
                   choices = c(12, 16, 20),
@@ -82,8 +84,6 @@ ui <- fluidPage(
                   multiple = FALSE,
                   selectize = TRUE,
                   selected = "black"),
-      
-      checkboxInput('bplot', "Remove Interaction", FALSE),
       
       downloadButton('downloadData', label = "Greenhouse Data")
     ),
@@ -109,7 +109,7 @@ ui <- fluidPage(
 # Server
 server <- function(input, output, session) {
   
-  # Reactive expression to store filtered data
+  # Filter data --------------------------------------------------------------
   filteredData <- reactive({
     req(data.all)  # Ensure the dataset is loaded
     
@@ -131,6 +131,8 @@ server <- function(input, output, session) {
     plotData
   })
   
+  
+  # Code for filtering data ----------------------------------------------------
   filterCode <- reactive({
     req(input$groupID)  # Ensure Group ID input is available
     
@@ -155,7 +157,71 @@ server <- function(input, output, session) {
     
   })
   
-  # Reactive expression to generate plot code
+  output$filterCode <- renderText({
+    req(filterCode())
+    filterCode()
+  })
+  
+
+  # Generate plot --------------------------------------------------------------
+  output$Plot <- renderPlot({
+    plotData <- filteredData()  # Assuming filteredData() is defined elsewhere to return the data frame
+    
+    # Base plot
+    myplot <- ggplot(data = plotData, aes_string(x = input$xvar, y = input$yvar)) +
+      xlab(input$xvar) + ylab(input$yvar)
+    myplot <- myplot + geom_point(position = position_dodge(0.8))
+    
+    # Color by
+    if (input$color != "None") {
+      myplot <- myplot + aes_string(color = input$color)
+    }
+        
+    # facet by
+    if (input$facet != "None") {
+      myplot <- myplot + facet_wrap(as.formula(paste("~", input$facet))) +
+        labs(title = paste("Plot of ", input$yvar, "by", input$xvar, "and Faceted by type of", input$facet))
+    }
+    
+
+    # add model
+    if (input$model == "Linear") {
+      if (input$bplot && (input$color == "Crop" || input$color == "PlayerID" ) && (input$facet == "None")) {
+        
+        # Fit linear model with common slope but different intercepts
+        lm_model <- lm(as.formula(paste(input$yvar, "~", input$xvar, "+", input$color)), data = plotData)
+        intercepts <- coef(lm_model)[1] + coef(lm_model)[grep(input$color, names(coef(lm_model)))]
+        slope <- coef(lm_model)[2]
+        colors <- unique(plotData[[input$color]])
+        
+        myplot <- myplot + geom_abline(intercept = coef(lm_model)[1], slope = slope)
+        
+        for (i in seq_along(colors)) {
+          myplot <- myplot + 
+            geom_abline(intercept = intercepts[i],
+                        slope = slope)
+        }
+      } else {
+        myplot <- myplot + geom_smooth(method = 'lm', se = FALSE) 
+      }
+      
+    } else if (input$model == "Quadratic") {
+      if (!input$bplot) {
+        myplot <- myplot + geom_smooth(method = 'lm', formula = y ~ poly(x, 2), se = FALSE) 
+      } 
+      
+    } else {
+      myplot <- myplot 
+    }
+
+    
+    # Apply font size and color customization
+    myplot <- myplot + theme(text = element_text(size = as.numeric(input$fontsize), color = input$fontcolor))
+    
+    myplot
+  })
+  
+  # Code for generating plot  --------------------------------------------------
   plotCode <- reactive({
     req(input$xvar, input$yvar)
     
@@ -186,46 +252,13 @@ server <- function(input, output, session) {
     code
   })
   
-  output$filterCode <- renderText({
-    req(filterCode())
-    filterCode()
-  })
-  
   output$plotCode <- renderText({
     req(plotCode())
     plotCode()  # Display the dynamically generated R code for plotting
   })
   
-  output$Plot <- renderPlot({
-    plotData <- filteredData()  # Assuming filteredData() is defined elsewhere to return the data frame
-    
-    myplot <- ggplot(data = plotData, aes_string(x = input$xvar, y = input$yvar)) +
-      xlab(input$xvar) + ylab(input$yvar)
-    
-    if (input$color != "None") {
-      myplot <- myplot + aes_string(color = input$color)
-    }
-    
-    if (input$model == "Linear") {
-      myplot <- myplot + geom_smooth(method = 'lm', se = FALSE) + geom_point(position = position_dodge(0.8))
-    } else if (input$model == "Quadratic") {
-      myplot <- myplot + geom_smooth(method = 'lm', formula = y ~ poly(x, 2), se = FALSE) + geom_point(position = position_dodge(0.8))
-    } else {
-      myplot <- myplot + geom_point(position = position_dodge(0.8))
-    }
-    
-    if (input$facet != "None") {
-      myplot <- myplot + facet_wrap(as.formula(paste("~", input$facet))) +
-        labs(title = paste("Plot of ", input$yvar, "by", input$xvar, "and Faceted by type of", input$facet))
-    }
-    
-    # Apply font size and color customization
-    myplot <- myplot + theme(text = element_text(size = as.numeric(input$fontsize), color = input$fontcolor))
-    
-    myplot
-  })
   
-  
+  # Residual plot --------------------------------------------------------------
   residualsCode <- reactive({
     req(input$xvar, input$yvar, input$model)
     
@@ -321,9 +354,8 @@ server <- function(input, output, session) {
       gridExtra::grid.arrange(p1, p2, p3, ncol = 2)
     }
   })
-
   
-  # Download filtered data
+  # Download filtered data -----------------------------------------------------
   output$downloadData <- downloadHandler(
     filename = function() {
       paste('Data-', Sys.Date(), '.csv', sep="")
