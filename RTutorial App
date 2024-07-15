@@ -234,36 +234,47 @@ server <- function(input, output, session) {
     model_code <- ""
     
     if (input$model == "Linear") {
-      model_code <- sprintf("lm(%s ~ %s, data = plotData)", yvar, xvar)
+      model_code <- sprintf("lm(%s ~ %s, data = filteredData)", yvar, xvar)
     } else if (input$model == "Quadratic") {
-      model_code <- sprintf("lm(%s ~ poly(%s, 2), data = plotData)", yvar, xvar)
+      model_code <- sprintf("lm(%s ~ poly(%s, 2), data = filteredData)", yvar, xvar)
     }
     
     code <- paste0(
       "# Fit the model\n",
       "myModel <- ", model_code, "\n\n",
       "# Calculate residuals\n",
-      "res <- resid(myModel)\n\n",
-      "# Set up plotting area\n",
-      "par(mfrow = c(2, 2))\n\n",
-      "# Create histogram of residuals\n",
-      "hist(res, main = 'Histogram of Residuals', xlab = 'Residuals')\n\n",
-      "# Create normal Q-Q plot\n",
-      "qqnorm(res, main = 'Normal Q-Q Plot of Residuals')\n",
-      "qqline(res)\n\n",
-      "# Create plot of ", xvar, " vs Residuals\n",
-      "plot(plotData[['", xvar, "']], res, xlab = '", xvar, "', ylab = 'Residuals', main = paste('", xvar, " vs Residuals'))\n",
-      "abline(h = 0)"
+      "filteredData$residuals <- resid(myModel)\n\n",
+      "# Plotting with ggplot2\n",
+      "p1 <- ggplot(filteredData, aes(x = residuals", if (input$color != "None") sprintf(", color = %s", input$color), ")) +\n",
+      "  geom_histogram(binwidth = 0.5) +\n",
+      "  ggtitle('Histogram of Residuals') +\n",
+      "  xlab('Residuals')\n\n",
+      "p2 <- ggplot(filteredData, aes(sample = residuals", if (input$color != "None") sprintf(", color = %s", input$color), ")) +\n",
+      "  stat_qq() +\n",
+      "  stat_qq_line() +\n",
+      "  ggtitle('Normal Q-Q Plot of Residuals')\n\n",
+      "p3 <- ggplot(filteredData, aes(x = ", xvar, ", y = residuals", if (input$color != "None") sprintf(", color = %s", input$color), ")) +\n",
+      "  geom_point() +\n",
+      "  geom_hline(yintercept = 0, linetype = 'dashed') +\n",
+      "  ggtitle(paste('", xvar, " vs Residuals')) +\n",
+      "  xlab('", xvar, "') +\n",
+      "  ylab('Residuals')",
+      if (input$facet != "None") paste0(" +\n  facet_wrap(~ ", input$facet, ")"),
+      "\n\n",
+      "gridExtra::grid.arrange(p1, p2, p3, ncol = 2)"
     )
     
     code
   })
   
+  
+  # Output the residuals code as text
   output$residualsCode <- renderText({
     req(residualsCode())
     residualsCode()
   })
   
+  # Render residuals plot
   output$Residuals <- renderPlot({
     shiny::validate(
       need(input$model != "None", "A statistical model must be selected before residuals can be calculated.")
@@ -273,7 +284,7 @@ server <- function(input, output, session) {
     xvar <- input$xvar
     yvar <- input$yvar
     
-    if(input$model == "None") {
+    if (input$model == "None") {
       "A statistical model must be selected before residuals can be calculated."
     } else {
       if (input$model == "Linear") {
@@ -282,24 +293,35 @@ server <- function(input, output, session) {
         myModel <- lm(as.formula(paste(yvar, "~ poly(", xvar, ", 2)")), data = plotData)
       }
       
-      res <- resid(myModel)
-      par(mfrow = c(2, 2))
+      plotData$residuals <- resid(myModel)
       
-      # Create histogram of residuals
-      hist(res, main = "Histogram of Residuals", xlab = "Residuals")
+      p1 <- ggplot(plotData, aes_string(x = "residuals", color = if (input$color != "None") input$color else NULL)) +
+        geom_histogram(binwidth = 0.5) +
+        ggtitle("Histogram of Residuals") +
+        xlab("Residuals")
       
-      # Create normal Q-Q plot
-      qqnorm(res, main = "Normal Q-Q Plot of Residuals")
-      qqline(res)
+      p2 <- ggplot(plotData, aes_string(sample = "residuals", color = if (input$color != "None") input$color else NULL)) +
+        stat_qq() +
+        stat_qq_line() +
+        ggtitle("Normal Q-Q Plot of Residuals")
       
-      # Create plot of xvar vs Residuals
-      plot(plotData[[xvar]], res, 
-           xlab = xvar, 
-           ylab = "Residuals", 
-           main = paste(xvar, "vs Residuals"))
-      abline(h = 0)
+      p3 <- ggplot(plotData, aes_string(x = xvar, y = "residuals", color = if (input$color != "None") input$color else NULL)) +
+        geom_point() +
+        geom_hline(yintercept = 0, linetype = "dashed") +
+        ggtitle(paste(xvar, "vs Residuals")) +
+        xlab(xvar) +
+        ylab("Residuals")
+      
+      if (input$facet != "None") {
+        p1 <- p1 + facet_wrap(as.formula(paste("~", input$facet)))
+        p2 <- p2 + facet_wrap(as.formula(paste("~", input$facet)))
+        p3 <- p3 + facet_wrap(as.formula(paste("~", input$facet)))
+      }
+      
+      gridExtra::grid.arrange(p1, p2, p3, ncol = 2)
     }
   })
+
   
   # Download filtered data
   output$downloadData <- downloadHandler(
