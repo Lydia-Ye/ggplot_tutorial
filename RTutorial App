@@ -3,6 +3,10 @@ library(readr)
 library(ggplot2)
 library(dplyr)
 library(DT)
+library(shinythemes)
+library(stringr)
+library(gdata)
+
 
 data.all <- read_csv("https://www.stat2games.sites.grinnell.edu/data/greenhouse/getdata.php") 
 data.all <- select(data.all, GroupID, PlayerID, Level, Season, SellPrice, BuyPrice, Crop, Money, Water, Nitrates, Yield, Profit)
@@ -18,12 +22,13 @@ data.all$Level <- as.factor(data.all$Level)
 data.all$GroupID <- tolower(data.all$GroupID)
 data.all$GroupID <- as.character(data.all$GroupID)
 data.all$PlayerID <- as.character(data.all$PlayerID)
+data.all$Crop <- as.factor(data.all$Crop)
 
 all_groups <- sort(unique(data.all$GroupID))
 all_players <- sort(unique(data.all$PlayerID))
-View(data.all)
 
-# UI
+
+# UI ---------------------------------------------------------------------------
 ui <- fluidPage(
   
   titlePanel("Greenhouse RTutorial"),
@@ -64,14 +69,14 @@ ui <- fluidPage(
       
       selectInput(inputId = "model",
                   label = "Statistical Model:",
-                  choices = c("None", "Linear", "Quadratic"),
+                  choices = c("None", "Linear", "Quadratic", "Cubic" ),
                   multiple = FALSE,
                   selectize = TRUE,
                   selected = "None"),
       
       conditionalPanel(
-        condition = "input.model == 'Linear' && !(input.facet == 'Crop' && input.color == 'Crop')",
-        checkboxInput('bplot', "Remove Interaction", FALSE)
+        condition = "input.model != 'None' && input.facet != input.color && input.color != 'None'",
+        checkboxInput('interaction', "Remove Interaction", FALSE)
       ),
       
       selectInput(inputId = "fontsize",
@@ -109,7 +114,7 @@ ui <- fluidPage(
   )
 )
 
-# Server
+# Server -----------------------------------------------------------------------
 server <- function(input, output, session) {
   
   # Filter data --------------------------------------------------------------
@@ -128,7 +133,7 @@ server <- function(input, output, session) {
     }
     
     # Dynamically select columns based on user input for X and Y variables
-    selected_columns <- unique(c("GroupID", "PlayerID", input$xvar, input$yvar, if(input$color != "None") input$color, "Level", if(input$facet != "None") input$facet))
+    selected_columns <- unique(c("GroupID", "PlayerID", input$xvar, input$yvar, if(input$color != "None") input$color, "Level","Crop", if(input$facet != "None") input$facet))
     plotData <- plotData[, selected_columns, drop = FALSE]
     
     plotData
@@ -165,64 +170,221 @@ server <- function(input, output, session) {
     filterCode()
   })
   
-
+  
   # Generate plot --------------------------------------------------------------
   output$Plot <- renderPlot({
-    plotData <- filteredData()  # Assuming filteredData() is defined elsewhere to return the data frame
+    plotData <- filteredData()  
+    
+    #Setting Up
+    XVariable <- plotData %>% pull(input$xvar)
+    YVariable <- plotData %>% pull(input$yvar)
+    if(input$color != "None") {
+      ColorVariable <- plotData %>% pull(input$color)
+    }
+    
+    # build model
+    # If model option is none
+    if (input$model == "None") {
+      myModel <- ""
+    } else { # If model option is not none
+      # More than one level for color is needed to run the model
+      if (nlevels(drop.levels(ColorVariable)) > 1) {
+        # Remove Interaction checkbox is selected
+        if (input$interaction == TRUE) {
+          # Facet option is none
+          if (input$facet == "None") {
+            if (input$model == "Linear") {
+              myModel <- lm(YVariable ~ XVariable + ColorVariable)
+            } else if (input$model == "Quadratic") {
+              myModel <- lm(YVariable ~ XVariable + I(XVariable^2) + ColorVariable)
+            } else if (input$model == "Cubic") {
+              myModel <- lm(YVariable ~ XVariable + I(XVariable^2) + I(XVariable^3) + ColorVariable)
+            }
+            # Adding predicted values column for Linear/Quadratic/Cubic
+            plotData <- cbind(plotData, predict(myModel, interval = "confidence"))
+            
+          # Facet option is NOT none
+          } else {
+            # Pulling Facet Variable
+            FacetVariable <- plotData %>% pull(input$facet)
+            
+            # More than one level for facet variable is needed to run the model
+            if (nlevels(drop.levels(FacetVariable)) > 1) {
+              if (input$model == "Linear") {
+                myModel <- lm(YVariable ~ XVariable + ColorVariable + FacetVariable)
+              } else if (input$model == "Quadratic") {
+                myModel <- lm(YVariable ~ XVariable + I(XVariable^2) + ColorVariable + FacetVariable)
+              } else if (input$model == "Cubic") {
+                myModel <- lm(YVariable ~ XVariable + I(XVariable^2) + I(XVariable^3) + ColorVariable + FacetVariable)
+              }
+              
+              # Adding predicted values column for Linear/Quadratic/Cubic
+              plotData <- cbind(plotData, predict(myModel, interval = "confidence"))
+            }
+          }
+          
+        # Remove Interaction checkbox it NOT selected
+        } else {
+          # Facet option is none
+          if (input$facet == "None") {
+            if (input$model == "Linear") {
+              myModel <- lm(YVariable ~ (XVariable + ColorVariable + XVariable * ColorVariable))
+            } else if (input$model == "Quadratic") {
+              myModel <- lm(YVariable ~ XVariable + I(XVariable^2) + ColorVariable + XVariable * ColorVariable +
+                              I(XVariable^2) * ColorVariable)
+            } else if (input$model == "Cubic") {
+              myModel <- lm(YVariable ~ XVariable + I(XVariable^2) + I(XVariable^3) + ColorVariable +
+                              XVariable * ColorVariable + I(XVariable^2) * ColorVariable +
+                              I(XVariable^3) * ColorVariable)
+            }
+            # Adding predicted values column for Linear/Quadratic/Cubic
+            plotData <- cbind(plotData, predict(myModel, interval = "confidence"))
+            
+          # Facet option is NOT none
+          } else {
+            # Pulling Facet Variable
+            FacetVariable <- plotData %>% pull(input$facet)
+            
+            # More than one level for facet variable is needed to run the model
+            if (nlevels(drop.levels(FacetVariable)) > 1) {
+              if (input$model == "Linear") {
+                myModel <- lm(YVariable ~ XVariable + ColorVariable + FacetVariable + XVariable * ColorVariable +
+                                XVariable * FacetVariable + ColorVariable * FacetVariable)
+              } else if (input$model == "Quadratic") {
+                myModel <- lm(YVariable ~ XVariable + I(XVariable^2) + ColorVariable + FacetVariable +
+                                XVariable * ColorVariable + XVariable * FacetVariable +
+                                I(XVariable^2) * ColorVariable + I(XVariable^2) * FacetVariable +
+                                ColorVariable * FacetVariable)
+              } else if (input$model == "Cubic") {
+                myModel <- lm(YVariable ~ XVariable + I(XVariable^2) + I(XVariable^3) + ColorVariable + FacetVariable +
+                                XVariable * ColorVariable + XVariable * FacetVariable +
+                                I(XVariable^2) * ColorVariable + I(XVariable^2) * FacetVariable +
+                                I(XVariable^3) * ColorVariable + I(XVariable^3) * FacetVariable +
+                                ColorVariable * FacetVariable)
+              }
+              # Adding predicted values column for Linear/Quadratic/Cubic
+              plotData <- cbind(plotData, predict(myModel, interval = "confidence"))
+            }
+          }
+        }
+      }
+    } # build model
+    
     
     # Base plot
     myplot <- ggplot(data = plotData, aes_string(x = input$xvar, y = input$yvar)) +
+      geom_point() +
       xlab(input$xvar) + ylab(input$yvar)
-    myplot <- myplot + geom_point(position = position_dodge(0.8))
+    
     
     # Color by
     if (input$color != "None") {
       myplot <- myplot + aes_string(color = input$color)
     }
-        
+    
     # facet by
     if (input$facet != "None") {
       myplot <- myplot + facet_wrap(as.formula(paste("~", input$facet))) +
         labs(title = paste("Plot of ", input$yvar, "by", input$xvar, "and Faceted by type of", input$facet))
     }
     
-
-    # add model
-    if (input$model == "Linear") {
-      if (input$bplot && (input$color == "Crop" || input$color == "PlayerID" )) {
-        
-        # Fit linear model with common slope but different intercepts
-        lm_model <- lm(as.formula(paste(input$yvar, "~", input$xvar, "+", input$color)), data = plotData)
-        intercepts <- coef(lm_model)[1] + coef(lm_model)[grep(input$color, names(coef(lm_model)))]
-        slope <- coef(lm_model)[2]
-        colors <- unique(plotData[[input$color]])
-        
-        myplot <- myplot + geom_abline(intercept = coef(lm_model)[1], slope = slope)
-        
-        for (i in seq_along(colors)) {
-          myplot <- myplot + 
-            geom_abline(intercept = intercepts[i],
-                        slope = slope)
+    
+    # Add model
+    # If remove interaction checkbox is not selected
+    if (input$interaction == FALSE) {
+      # None
+      if (input$model == "None") {
+        myplot <- myplot
+      
+      # Linear/Quadratic/Cubic
+      } else if (input$model %in% c("Linear", "Quadratic", "Cubic")) {
+        # Color variable has more than one level
+        if (nlevels(drop.levels(ColorVariable)) >= 1) {
+          # Facet Option is None
+          if (input$facet == "None") {
+            # Model Option - Linear
+            if (input$model == "Linear") {
+              myplot <- myplot +
+                stat_smooth(method = "lm", formula = y ~ x, se = FALSE)
+              
+            # Model Option - Quadratic
+            } else if (input$model == "Quadratic") {
+              myplot <- myplot +
+                stat_smooth(method = "lm", formula = y ~ x + I(x^2), se = FALSE)
+              
+            # Model Option - Cubic
+            } else if (input$model == "Cubic") {
+              myplot <- myplot +
+                stat_smooth(method = "lm", formula = y ~ x + I(x^2) + I(x^3), se = FALSE)
+            }
+            
+          # Facet Option is NOT None
+          } else {
+            # Pulling Facet Variable
+            FacetVariable <- plotData %>% pull(input$facet)
+            
+            # Facet Variable has more than one level
+            if (nlevels(drop.levels(FacetVariable)) > 1) {
+              # Model Option - Linear
+              if (input$model == "Linear") {
+                myplot <- myplot +
+                  stat_smooth(method = "lm", formula = y ~ x, se = FALSE)
+                
+              # Model Option - Quadratic
+              } else if (input$model == "Quadratic") {
+                myplot <- myplot +
+                  stat_smooth(method = "lm", formula = y ~ x + I(x^2), se = FALSE)
+                
+              # Model Option - Cubic
+              } else if (input$model == "Cubic") {
+                myplot <- myplot +
+                  stat_smooth(method = "lm", formula = y ~ x + I(x^2) + I(x^3), se = FALSE)
+              }
+            }
+          }
         }
-        
-        if (input$facet != "None") {
-          myplot <- myplot + stat_smooth(method = "lm", se = FALSE, formula = y ~ x + input$color)
-        }
-      } else {
-        myplot <- myplot + geom_smooth(method = 'lm', se = FALSE) 
       }
       
-    } else if (input$model == "Quadratic") {
-        myplot <- myplot + geom_smooth(method = 'lm', formula = y ~ poly(x, 2), se = FALSE) 
+    # If remove interaction checkbox is selected
     } else {
-      myplot <- myplot 
-    }
+     
+      # Model Option - None
+      if (input$model == "None") {
+        myplot <- myplot
+        
+      # Linear/Quadratic/Cubic
+      } else if (input$model %in% c("Linear", "Quadratic", "Cubic")) {
+        # Color variable has more than one level
+        if (nlevels(drop.levels(ColorVariable)) > 1) {
+          # Facet Option is None
+          if (input$facet == "None") {
+            myplot <- myplot +
+              geom_line(aes(y = fit), size = 1)
+            
+          # Facet Option is NOT None
+          } else {
+            # Pulling Facet Variable
+            FacetVariable <- plotData %>% pull(input$facet)
+            
+            # Facet Variable has more than one level
+            if (nlevels(drop.levels(FacetVariable)) > 1) {
+              myplot <- myplot +
+                geom_line(aes(y = fit), size = 1)
+            }
+          }
+        }
+      }
+    } # Add model
+    
 
     
-    # Apply font size and color customization
-    myplot <- myplot + theme(text = element_text(size = as.numeric(input$fontsize), color = input$fontcolor))
     
-    myplot
+    
+    # Apply font size and color customization
+    # myplot <- myplot + theme(text = element_text(size = as.numeric(input$fontsize), color = input$fontcolor))
+    
+    # Returning visual
+    return(myplot)
   })
   
   # Code for generating plot  --------------------------------------------------
@@ -259,7 +421,7 @@ server <- function(input, output, session) {
   output$plotCode <- renderText({
     req(plotCode())
     plotCode()  # Display the dynamically generated R code for plotting
-  })
+  }) 
   
   
   # Residual plot --------------------------------------------------------------
