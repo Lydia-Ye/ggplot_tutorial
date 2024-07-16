@@ -267,7 +267,9 @@ server <- function(input, output, session) {
     # Base plot
     myplot <- ggplot(data = plotData, aes_string(x = input$xvar, y = input$yvar)) +
       geom_point() +
-      xlab(input$xvar) + ylab(input$yvar)
+      xlab(input$xvar) + ylab(input$yvar) + 
+      labs(title = paste("Plot of ", input$yvar, "by", input$xvar))
+      
     
     
     # Color by
@@ -277,8 +279,7 @@ server <- function(input, output, session) {
     
     # facet by
     if (input$facet != "None") {
-      myplot <- myplot + facet_wrap(as.formula(paste("~", input$facet))) +
-        labs(title = paste("Plot of ", input$yvar, "by", input$xvar, "and Faceted by type of", input$facet))
+      myplot <- myplot + facet_wrap(as.formula(paste("~", input$facet)))
     }
     
     
@@ -305,39 +306,58 @@ server <- function(input, output, session) {
     
     
     # Apply font size and color customization
-    # myplot <- myplot + theme(text = element_text(size = as.numeric(input$fontsize), color = input$fontcolor))
+    myplot <- myplot + theme(text = element_text(size = as.numeric(input$fontsize), color = input$fontcolor))
     
     # Returning visual
     return(myplot)
   })
   
-  # Code for generating plot  --------------------------------------------------
+  # Code for generating plot --------------------------------------------------
   plotCode <- reactive({
     req(input$xvar, input$yvar)
     
     code <- sprintf("ggplot(data = plotData, aes(x = %s, y = %s", input$xvar, input$yvar)
+    
     if (input$color != "None") {
       code <- paste0(code, sprintf(", color = %s", input$color))
     }
     code <- paste0(code, ")) +\n")
     
-    if (input$model == "Linear") {
-      code <- paste0(code, "  geom_smooth(method = 'lm', se = FALSE) +\n  geom_point(position = position_dodge(0.8)) +\n")
-    } else if (input$model == "Quadratic") {
-      code <- paste0(code, "  geom_smooth(method = 'lm', formula = y ~ poly(x, 2), se = FALSE) +\n  geom_point(position = position_dodge(0.8)) +\n")
-    } else {
-      code <- paste0(code, "  geom_point(position = position_dodge(0.8)) +\n")
-    }
-    
-    code <- paste0(code, sprintf("  xlab('%s') +\n  ylab('%s')", input$xvar, input$yvar))
+    code <- paste0(code, "  geom_point() +\n")
     
     if (input$facet != "None") {
-      code <- paste0(code, sprintf(" +\n  facet_wrap(~ %s) +\n", input$facet))
-      code <- paste0(code, sprintf("  labs(title = 'Plot of %s by %s and Faceted by type of %s')", input$yvar, input$xvar, input$facet))
+      code <- paste0(code, sprintf("  facet_wrap(~ %s) +\n", input$facet))
     }
     
-    # Adding font size and color customization
-    code <- paste0(code, sprintf(" +\n  theme(text = element_text(size = %s, color = '%s'))", input$fontsize, input$fontcolor))
+    if (input$model != "None") {
+      if (input$interaction == FALSE) {
+        if (input$model == "Linear") {
+          code <- paste0(code, "  stat_smooth(method = 'lm', formula = y ~ x, se = FALSE) +\n")
+        } else if (input$model == "Quadratic") {
+          code <- paste0(code, "  stat_smooth(method = 'lm', formula = y ~ x + I(x^2), se = FALSE) +\n")
+        } else if (input$model == "Cubic") {
+          code <- paste0(code, "  stat_smooth(method = 'lm', formula = y ~ x + I(x^2) + I(x^3), se = FALSE) +\n")
+        }
+      } else {
+        model_code <- ""
+        if (input$model == "Linear") {
+          model_code <- sprintf("myModel <- lm(%s ~ %s + %s, data = plotData)\n", input$yvar, input$xvar, input$color)
+        } else if (input$model == "Quadratic") {
+          model_code <- sprintf("myModel <- lm(%s ~ %s + I(%s^2) + %s, data = plotData)\n", input$yvar, input$xvar, input$xvar, input$color)
+        } else if (input$model == "Cubic") {
+          model_code <- sprintf("myModel <- lm(%s ~ %s + I(%s^2) + I(%s^3) + %s, data = plotData)\n", input$yvar, input$xvar, input$xvar, input$xvar, input$color)
+        }
+        
+        
+        model_code <- paste0(model_code, "plotData <- cbind(plotData, predict(myModel, interval = 'confidence'))\n\n")
+        code <- paste0(model_code, code)
+        code <- paste0(code, "  geom_line(aes(y = fit), size = 1) +\n")
+      }
+    }
+    
+    code <- paste0(code, sprintf("  xlab('%s') +\n  ylab('%s') +\n", input$xvar, input$yvar))
+    code <- paste0(code, sprintf("  labs(title = 'Plot of %s by %s') +\n", input$yvar, input$xvar))
+    code <- paste0(code, sprintf("  theme(text = element_text(size = %s, color = '%s'))", input$fontsize, input$fontcolor))
     
     code
   })
@@ -347,6 +367,7 @@ server <- function(input, output, session) {
     plotCode()  # Display the dynamically generated R code for plotting
   }) 
   
+
   
   # Residual plot --------------------------------------------------------------
   residualsCode <- reactive({
