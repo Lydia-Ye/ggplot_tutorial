@@ -175,20 +175,14 @@ server <- function(input, output, session) {
   output$Plot <- renderPlot({
     plotData <- filteredData()  
     
-    #Setting Up
-    XVariable <- plotData %>% pull(input$xvar)
-    YVariable <- plotData %>% pull(input$yvar)
-    if(input$color != "None") {
-      ColorVariable <- plotData %>% pull(input$color)
-    }
     
     # build model
-    # If model option is none
-    if (input$model == "None") {
-      myModel <- ""
-    } else { # If model option is not none
-      # More than one level for color is needed to run the model
-      if (nlevels(drop.levels(ColorVariable)) > 1) {
+    if ((input$model != "None") && (input$color != "None")) {
+      #Setting Up
+      XVariable <- plotData %>% pull(input$xvar)
+      YVariable <- plotData %>% pull(input$yvar)
+      ColorVariable <- plotData %>% pull(input$color)
+      
         # Remove Interaction checkbox is selected
         if (input$interaction == TRUE) {
           # Facet option is none
@@ -267,7 +261,6 @@ server <- function(input, output, session) {
             }
           }
         }
-      }
     } # build model
     
     
@@ -291,93 +284,24 @@ server <- function(input, output, session) {
     
     # Add model
     # If remove interaction checkbox is not selected
-    if (input$interaction == FALSE) {
-      # None
-      if (input$model == "None") {
-        myplot <- myplot
-      
-      # Linear/Quadratic/Cubic
-      } else if (input$model %in% c("Linear", "Quadratic", "Cubic")) {
-        # Color variable has more than one level
-        if (nlevels(drop.levels(ColorVariable)) >= 1) {
-          # Facet Option is None
-          if (input$facet == "None") {
-            # Model Option - Linear
-            if (input$model == "Linear") {
-              myplot <- myplot +
-                stat_smooth(method = "lm", formula = y ~ x, se = FALSE)
-              
-            # Model Option - Quadratic
-            } else if (input$model == "Quadratic") {
-              myplot <- myplot +
-                stat_smooth(method = "lm", formula = y ~ x + I(x^2), se = FALSE)
-              
-            # Model Option - Cubic
-            } else if (input$model == "Cubic") {
-              myplot <- myplot +
-                stat_smooth(method = "lm", formula = y ~ x + I(x^2) + I(x^3), se = FALSE)
-            }
-            
-          # Facet Option is NOT None
-          } else {
-            # Pulling Facet Variable
-            FacetVariable <- plotData %>% pull(input$facet)
-            
-            # Facet Variable has more than one level
-            if (nlevels(drop.levels(FacetVariable)) > 1) {
-              # Model Option - Linear
-              if (input$model == "Linear") {
-                myplot <- myplot +
-                  stat_smooth(method = "lm", formula = y ~ x, se = FALSE)
-                
-              # Model Option - Quadratic
-              } else if (input$model == "Quadratic") {
-                myplot <- myplot +
-                  stat_smooth(method = "lm", formula = y ~ x + I(x^2), se = FALSE)
-                
-              # Model Option - Cubic
-              } else if (input$model == "Cubic") {
-                myplot <- myplot +
-                  stat_smooth(method = "lm", formula = y ~ x + I(x^2) + I(x^3), se = FALSE)
-              }
-            }
-          }
-        }
+    if (input$model != "None" && input$interaction == FALSE) {
+      # Model Option - Linear
+      if (input$model == "Linear") {
+        myplot <- myplot + stat_smooth(method = "lm", formula = y ~ x, se = FALSE)
+      # Model Option - Quadratic
+      } else if (input$model == "Quadratic") {
+        myplot <- myplot + stat_smooth(method = "lm", formula = y ~ x + I(x^2), se = FALSE)
+      # Model Option - Cubic
+      } else if (input$model == "Cubic") {
+        myplot <- myplot + stat_smooth(method = "lm", formula = y ~ x + I(x^2) + I(x^3), se = FALSE)
       }
-      
-    # If remove interaction checkbox is selected
-    } else {
-     
-      # Model Option - None
-      if (input$model == "None") {
-        myplot <- myplot
-        
-      # Linear/Quadratic/Cubic
-      } else if (input$model %in% c("Linear", "Quadratic", "Cubic")) {
-        # Color variable has more than one level
-        if (nlevels(drop.levels(ColorVariable)) > 1) {
-          # Facet Option is None
-          if (input$facet == "None") {
-            myplot <- myplot +
-              geom_line(aes(y = fit), size = 1)
-            
-          # Facet Option is NOT None
-          } else {
-            # Pulling Facet Variable
-            FacetVariable <- plotData %>% pull(input$facet)
-            
-            # Facet Variable has more than one level
-            if (nlevels(drop.levels(FacetVariable)) > 1) {
-              myplot <- myplot +
-                geom_line(aes(y = fit), size = 1)
-            }
-          }
-        }
-      }
-    } # Add model
-    
 
-    
+    # If remove interaction checkbox is selected
+    } else if (input$model != "None" && input$interaction == TRUE) {
+      myplot <- myplot + geom_line(aes(y = fit), size = 1)
+    } else {
+      myplot <- myplot # no model
+    } # Add model
     
     
     # Apply font size and color customization
