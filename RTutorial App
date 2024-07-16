@@ -2,10 +2,6 @@ library(shiny)
 library(readr)
 library(ggplot2)
 library(dplyr)
-library(DT)
-library(shinythemes)
-library(stringr)
-library(gdata)
 
 
 data.all <- read_csv("https://www.stat2games.sites.grinnell.edu/data/greenhouse/getdata.php") 
