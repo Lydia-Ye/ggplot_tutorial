@@ -636,7 +636,7 @@ Here are two apps that helps you do the data wrangling and create visualizations
 
 (need the link for the shiny apps to be added here)
 ```{r, echo=FALSE}
-# knitr::include_app("https://shiny.grinnell.edu/psychic1/", height = "500px")
+knitr::include_app(" https://shiny.grinnell.edu/GHTutorial/", height = "500px")
 ```
 
 ### Exercise 6: Try to create the following plots on you own and check your answers using the above apps.
