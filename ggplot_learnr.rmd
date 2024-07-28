@@ -1,5 +1,5 @@
 ---
-title: "Greenhouse Data Visualization"
+title: "Visualizating the GreenHouse Data"
 output:
   learnr::tutorial:
     progressive: true
@@ -10,6 +10,7 @@ runtime: shiny_prerendered
 
 ```{r setup, include=FALSE}
 library(learnr)
+library(readr)
 library(ggplot2)
 library(mosaic)
 library(dplyr)
@@ -20,10 +21,12 @@ EVAL_HO_BLOCKS  = FALSE # code that only executes in student handouts
 FIG_HEIGHT = 2
 
 # Read data from greenhouse game 
-GreenHouse<- read.csv("https://www.stat2games.sites.grinnell.edu/data/greenhouse/getdata.php") 
-GreenHouse <- select(GreenHouse, GroupID, PlayerID, Plot,Season, Level, Crop, Money, Water, Nitrates, Yield, Profit)
+GreenHouse<- read_csv("https://www.stat2games.sites.grinnell.edu/data/greenhouse/getdata.php") 
+GreenHouse <- select(GreenHouse, GroupID, PlayerID, Plot,Season, Level, Crop, Water, Nitrates, Yield, Profit)
 sample1 <- read.csv("Sample1_data.csv")
-sample1 <- select(sample1, GroupID, PlayerID, Plot,Season, Level, Crop, Money, Water, Nitrates, Yield, Profit)
+
+#sample1 <- read_csv("Sample1_data.csv")
+sample1 <- select(sample1, GroupID, PlayerID, Plot, Season, Level, Crop, Water, Nitrates, Yield, Profit)
 
 ```
 
@@ -32,70 +35,82 @@ sample1 <- select(sample1, GroupID, PlayerID, Plot,Season, Level, Crop, Money, W
 <!-- START_SECTION -->
 ## Getting Started
 
-This online tutorial is designed to introduce you to data visualization with the Greenhouse data.
-
-### Packages and Datasets
-
-You will need the following packages to complete this tutorial:
-
-```{r load_packages, exercise = ALL_AS_EXERCISE, eval = EVAL_HO_BLOCKS}
-# install.packages("ggplot2")
-library(ggplot2)
-```
-
-You will also need the following datasets:
-
-```{r load_datasets, exercise = ALL_AS_EXERCISE, eval = EVAL_HO_BLOCKS}
-# Read online data from greenhouse game
-GreenHouse<- read.csv("https://www.stat2games.sites.grinnell.edu/data/greenhouse/getdata.php") 
-GreenHouse <- select(GreenHouse, GroupID, PlayerID, Plot, Level, Crop, Money, Water, Nitrates, Yield, Profit)
-
-# Sample data for greenhouse game
-sample1
-```
-
-<!-- END_SECTION -->
+This online tutorial is designed to demonstrate how to use R to create graphs with the Greenhouse data. In this page, you will be able to type code into any of the boxes below. If it doesn't work, simply try a "hint" or click the "start Over" button. If you have never written R code before, you might choose to work through an [Introduction to R](https://shiny.grinnell.edu/tutorials/1_R_Intro/#section-getting-started) before attempting this activity.
 
 
-<!-- START_SECTION -->
-## Introduction
+**Data**: In this tutorial, we will use the data from the [Greenhouse Game](https://stat2games.sites.grinnell.edu/), which provides information from a virtual greenhouse. We also have a specific small set of Greenhouse data called **sample1**. You can download the sample1 data from the app on the last page of this tutorial.
 
-This tutorial will focus on creating graphs to effectively communicate key patterns within a dataset. There are numerous ways to create graphs, however this tutorial will focus on the R package ggplot2, created by Hadley Wickham. The key function used in `ggplot2` is `ggplot()` (the *grammar of graphics plot*). This function is different from other graphics functions because it uses a particular grammar inspired by Leland Wilkinson’s landmark book, *The Grammar of Graphics*, which focuses on thinking about, reasoning with, and communicating with graphics. 
+We will use just a few variables that are available within the full Greenhouse data set.
 
-**Data**: In this tutorial, we will use the [data](https://stat2games.sites.grinnell.edu/data/greenhouse/greenhouse.php) from the [Greenhouse Game](https://stat2games.sites.grinnell.edu/), which provides yielding information in a virtual greenhouse. Specifically, in the most of given examples, we will be using the sample1 data from Greenhouse data.
-
-To start, we've paired down the dataset to focus on just a few variables:
-
- * `GroupID`: Any alpha‐numeric term used for each player
- * `PlayerID`: Any alpha‐numeric term used for each player or group
+ * `GroupID`: Any alpha‐numeric term used for each class or team
+ * `PlayerID`: Any alpha‐numeric term used for each player
  * `Level`: Level of the Greenhouse game
- * `Plot`: The area of ground for planting the seeds, which is numbered between 1 and 40
- * `Crop`: The type of crops (Beans, Corn, or Tomato) planted in a plot
- * `Money`: The amount of money that the player currently have (start with 5000; calculated each season)
- * `Water`: The amount of water (in inches) that you assign to a plot
- * `Nitrate`: The amount of nitrates that exists within a plot
- * `Yield`: The amount of crops produced on a plot
- * `Profit`: The amount of money you earned on a plot
+ * `Plot`: The area of ground for planting seeds, plots are numbered between 1 and 40
+ * `Crop`: The type of crops (Beans, Corn, or Tomato) grown in each plot
+ * `Water`: The amount of water (in inches) that is given to each plot
+ * `Nitrate`: The amount of nitrates in the soil of each plot
+ * `Yield`: The amount of crops produced. It is measured by the number of bushels produced for each plot. 
+ * `Profit`: The amount of money earned on a plot
  
-Run the following code to get a peak of the Greenhouse data and Greenhouse sample 1 data:
+
+Before making a graph, we will use a few commands that allow us to view the data sets. Select the **Run Code** button on the right to run the code in each of the sections below.
 
 ```{r display_data, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE}
-# The code below uses the head() function to view the first four lines of the Greenhouse data.
+# The code below reads the Greenhouse data and then views the first four lines of the Greenhouse data.
+GreenHouse<- read_csv("https://www.stat2games.sites.grinnell.edu/data/greenhouse/getdata.php") 
 head(GreenHouse, 4)
 
-# The code below uses the head() function to view the first four lines of the Greenhouse sample1 data.
+# The code below uses the head() function to view the first four lines of the sample1 data, which has alredy been read into this tutorial.
 head(sample1, 4)
 ```
 
 ```{r display_summary_data, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE}
-# The code below uses the table() command to see summary data for Greenhouse sample1 data.
-table(sample1)
+# The code below uses the str() command to see each column of the Greenhouse sample1 data.
+str(sample1)
 ```
 
 ```{r display_summary_stats, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE}
-# The code below used the favstats() command to see summary statistics of 'Money' variable in the Greenhouse sample1 data.
-favstats(sample1$Money)
+# The code below used the favstats() command to see summary statistics of 'Yield' variable in the Greenhouse sample1 data.
+favstats(sample1$Yield)
 ```
+
+
+**Questions:**  
+
+1) Try modifying the above code to determine the number of rows in the Greenhouse data set. 
+
+```{r 1d,exercise=TRUE,exercise.lines=3}
+
+```
+
+
+```{r 1d-hint-1}
+# Notice that the str() command shows the dimensions of a data set.
+```
+
+```{r 1d-hint-2}
+str(GreenHouse)
+```
+
+
+2) What code could you use to find the average Profit from the sample1 data?
+
+```{r 1e,exercise=TRUE,exercise.lines=3}
+
+```
+
+
+
+```{r 1e-hint-1}
+# Try the favstats() command, but select Profit instead of Yield
+```
+
+```{r 1e-hint-2}
+favstats(sample1$Profit)
+```
+
+
+
 <!-- END_SECTION -->
 
 
@@ -103,14 +118,14 @@ favstats(sample1$Money)
 <!-- START_SECTION -->
 ## Our First Graph
 
-If you worked through the previous lab, you have already used an app to create a scatterplot of the sample1 data.
+If you worked through the GreenHouse activity, you have already used an app to create a scatterplot of the sample1 data.
 ```{r display_plot, echo = FALSE}
 ggplot(aes(x = Water, y = Yield), data = sample1) +
-  labs(title="Water versus Yield") +
+  labs(title="Scatterplot of Amount of Water versus Yield") +
   geom_point() 
 ```
 
-Whenever we are coding it in R it is important to be able to clearly understand the following two questions. 
+Whenever we write code it is important to be able to clearly understand the following two questions. 
 
 1. What do you want the computer to do?
 2. What must the computer know in order to do that?
@@ -127,6 +142,8 @@ To make the above plot, the answers to our questions are
       *	The variable to be plotted along the y-axis.
       *	The variable to be plotted along the x-axis.
       *	The data set that contains the variables.
+
+While many software packages allow the user to make basic plots, it can be challenging to create plots that are customized to address a specific idea. While there are numerous ways to create graphs, this tutorial will focus on the R package ggplot2, created by Hadley Wickham. The key function we will use is `ggplot()`. 
 
 ### Plot Template
 
@@ -184,41 +201,57 @@ Now, we can put each piece in its place in the template and then run the code to
 
 ```{r create_plot1, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE}
 # The code below uses ggplot() and geom_point() to create a scatterplot of Water versus Yield
-# ggplot(aes(x = Water, y = Yield), data = sample1) +
-#   geom_point()
+
 ggplot(aes(x = Water, y = Yield), data = sample1) +
   geom_point() 
 ```
 
 
-### Exercise 1: Create a new scatterplot of Water versus Profits using the sample1  data.
-```{r create_plot_exercise, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE}
-# Write your code here
+**Questions:**  
 
+3) Create a new scatterplot of Water versus Profits using the sample1  data.
+
+```{r 2d,exercise=TRUE,exercise.lines=3}
 
 ```
+
+
+```{r 2d-hint-1}
+# Replace y = Yield with y = Profit
+```
+
+```{r 2d-hint-2}
+
+ggplot(aes(x = Water, y = Profit), data = sample1) +
+  geom_point() 
+```
+
 <!-- END_SECTION -->
 
 <!-- START_SECTION -->
+
 ## Layering Graphs with ggplot2
 
-While many software packages allow the user to make basic plots, it can be challenging to create plots that are customized to address a specific idea. However, the `ggplot2` package builds graphics in a structured manner using layers, so it enables independent components to be layered to create custom graphics.
+While many software packages allow the user to make basic plots, it can be challenging to create plots that are customized to address a specific idea. One advantage of the `ggplot()` function is that it enables independent components to be layered to create custom graphics.
 
-Now, let's add some additional details and functions to our plot. For example, we can add a regression line to our scatterplot:
+For example, we can add a regression line to our scatterplot:
 
 ### Adding a regression line to your scatterplot
 
 ```{r add_regline, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
 # The code below adds a linear regression line to the scatterplot or water versus yield
+
 ggplot( aes(x = Water, y = Yield), data = sample1) +
   geom_point() +
   geom_smooth(method = "lm", se = FALSE)
 ```
 
 
-### Exercise 2: Create 4 new graphs using the following code and explain what each of the following does.
+**Questions:**  
 
-#### a.
+4) Create 4 new graphs using the following code and explain what each of the following does.
+
+4a.
 
 ```{r exercise2a, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
 # Remove `,se=FALSE`
@@ -228,7 +261,7 @@ ggplot( aes(x = Water, y = Yield), data = sample1) +
 ```
  
 
-#### b. 
+4b. 
 
 ```{r exercise2b, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
 # Remove `method = "lm”, se = FALSE`
@@ -237,7 +270,7 @@ ggplot( aes(x = Water, y = Yield), data = sample1) +
   geom_smooth()
 ```
 
-#### c.
+4c.
 
 ```{r exercise2c, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
 # Add `, formula = y ~ poly(x, 2)` after `method = "lm` to create a quadratic line
@@ -246,7 +279,7 @@ ggplot( aes(x = Water, y = Yield), data = sample1) +
   geom_smooth(method = "lm", formula = y ~ poly(x, 2), se=FALSE)
 ```
 
-#### d.
+4d.
 
 ```{r exercise2d, exercise = ALL_AS_EXERCISE, eval = !ALL_AS_EXERCISE, fig.height = FIG_HEIGHT}
 # Add `, formula = y ~ poly(x, 2)` and remove `,se=FALSE`
@@ -263,7 +296,7 @@ ggplot( aes(x = Water, y = Yield), data = sample1) +
 <!-- START_SECTION -->
 ## Coloring, Faceting, and Other Aesthetics
 
-After building layers for generating the basics of the plot, we can use different aesthetics in ggplot2 to enhance the visualizations. For example, we can use color to distinguish data points, facet data to create subplots, and adjust the transparency, linetype, type, and size of data points.
+After building layers for generating the basics of the plot, we can use different aesthetics to enhance the visualizations. For example, we can use color to distinguish data points, facet data to create subplots, as well as adjust the transparency, size, and shape of points.
 
 ### Coloring and Overriding Aesthetics
 
@@ -663,8 +696,8 @@ ggplot(aes(x = Water, y = Yield, shape = Crop, color = Crop), data = sample1) +
 #### b. 
 ```{r echo =FALSE}
 # Remove `method = "lm”, se = FALSE`
-ggplot(aes(x = Water, y = Money, color = Level), data = sample1) +
-  labs(title = "Money vs Water by Crop", x = "Water", y = "Money") +
+ggplot(aes(x = Water, y = Yield, color = Level), data = sample1) +
+  labs(title = "Yield vs Water by Crop", x = "Water", y = "Yield") +
   geom_point() +
   facet_wrap(~Crop)
 ```
