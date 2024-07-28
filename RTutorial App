@@ -89,6 +89,8 @@ ui <- fluidPage(
                   selectize = TRUE,
                   selected = "black"),
       
+      checkboxInput('showCode', "Show code", FALSE),
+      
       downloadButton('downloadData', label = "Greenhouse Data")
     ),
     
@@ -96,19 +98,27 @@ ui <- fluidPage(
       tabsetPanel(
         tabPanel("Plot", 
                  plotOutput(outputId = "Plot"),
-                 h4("Code for Data Cleaning:"),
-                 verbatimTextOutput("filterCode"),
-                 h4("Code for Data Visualizations:"),
-                 verbatimTextOutput("plotCode")
+                 conditionalPanel(
+                   condition = "input.showCode  == true",
+                   h4("Code for Data Cleaning:"),
+                   verbatimTextOutput("filterCode"),
+                   h4("Code for Data Visualizations:"),
+                   verbatimTextOutput("plotCode")
+                 )
         ),
         tabPanel("Residual Plot",
                  plotOutput(outputId = "Residuals"),
-                 h4("Code for Residual Plots:"),
-                 verbatimTextOutput("residualsCode"))
+                 conditionalPanel(
+                   condition = "input.showCode == true",
+                   h4("Code for Residual Plots:"),
+                   verbatimTextOutput("residualsCode")
+                 )
+        )
       )
     )
   )
 )
+
 
 # Server -----------------------------------------------------------------------
 server <- function(input, output, session) {
@@ -163,6 +173,7 @@ server <- function(input, output, session) {
   
   output$filterCode <- renderText({
     req(filterCode())
+    req(input$showCode)
     filterCode()
   })
   
@@ -179,84 +190,84 @@ server <- function(input, output, session) {
       YVariable <- plotData %>% pull(input$yvar)
       ColorVariable <- plotData %>% pull(input$color)
       
-        # Remove Interaction checkbox is selected
-        if (input$interaction == TRUE) {
-          # Facet option is none
-          if (input$facet == "None") {
-            if (input$model == "Linear") {
-              myModel <- lm(YVariable ~ XVariable + ColorVariable)
-            } else if (input$model == "Quadratic") {
-              myModel <- lm(YVariable ~ XVariable + I(XVariable^2) + ColorVariable)
-            } else if (input$model == "Cubic") {
-              myModel <- lm(YVariable ~ XVariable + I(XVariable^2) + I(XVariable^3) + ColorVariable)
-            }
-            # Adding predicted values column for Linear/Quadratic/Cubic
-            plotData <- cbind(plotData, predict(myModel, interval = "confidence"))
-            
-          # Facet option is NOT none
-          } else {
-            # Pulling Facet Variable
-            FacetVariable <- plotData %>% pull(input$facet)
-            
-            # More than one level for facet variable is needed to run the model
-            if (nlevels(drop.levels(FacetVariable)) > 1) {
-              if (input$model == "Linear") {
-                myModel <- lm(YVariable ~ XVariable + ColorVariable + FacetVariable)
-              } else if (input$model == "Quadratic") {
-                myModel <- lm(YVariable ~ XVariable + I(XVariable^2) + ColorVariable + FacetVariable)
-              } else if (input$model == "Cubic") {
-                myModel <- lm(YVariable ~ XVariable + I(XVariable^2) + I(XVariable^3) + ColorVariable + FacetVariable)
-              }
-              
-              # Adding predicted values column for Linear/Quadratic/Cubic
-              plotData <- cbind(plotData, predict(myModel, interval = "confidence"))
-            }
+      # Remove Interaction checkbox is selected
+      if (input$interaction == TRUE) {
+        # Facet option is none
+        if (input$facet == "None") {
+          if (input$model == "Linear") {
+            myModel <- lm(YVariable ~ XVariable + ColorVariable)
+          } else if (input$model == "Quadratic") {
+            myModel <- lm(YVariable ~ XVariable + I(XVariable^2) + ColorVariable)
+          } else if (input$model == "Cubic") {
+            myModel <- lm(YVariable ~ XVariable + I(XVariable^2) + I(XVariable^3) + ColorVariable)
           }
+          # Adding predicted values column for Linear/Quadratic/Cubic
+          plotData <- cbind(plotData, predict(myModel, interval = "confidence"))
           
-        # Remove Interaction checkbox it NOT selected
+          # Facet option is NOT none
         } else {
-          # Facet option is none
-          if (input$facet == "None") {
+          # Pulling Facet Variable
+          FacetVariable <- plotData %>% pull(input$facet)
+          
+          # More than one level for facet variable is needed to run the model
+          if (nlevels(drop.levels(FacetVariable)) > 1) {
             if (input$model == "Linear") {
-              myModel <- lm(YVariable ~ (XVariable + ColorVariable + XVariable * ColorVariable))
+              myModel <- lm(YVariable ~ XVariable + ColorVariable + FacetVariable)
             } else if (input$model == "Quadratic") {
-              myModel <- lm(YVariable ~ XVariable + I(XVariable^2) + ColorVariable + XVariable * ColorVariable +
-                              I(XVariable^2) * ColorVariable)
+              myModel <- lm(YVariable ~ XVariable + I(XVariable^2) + ColorVariable + FacetVariable)
             } else if (input$model == "Cubic") {
-              myModel <- lm(YVariable ~ XVariable + I(XVariable^2) + I(XVariable^3) + ColorVariable +
-                              XVariable * ColorVariable + I(XVariable^2) * ColorVariable +
-                              I(XVariable^3) * ColorVariable)
+              myModel <- lm(YVariable ~ XVariable + I(XVariable^2) + I(XVariable^3) + ColorVariable + FacetVariable)
             }
+            
             # Adding predicted values column for Linear/Quadratic/Cubic
             plotData <- cbind(plotData, predict(myModel, interval = "confidence"))
-            
-          # Facet option is NOT none
-          } else {
-            # Pulling Facet Variable
-            FacetVariable <- plotData %>% pull(input$facet)
-            
-            # More than one level for facet variable is needed to run the model
-            if (nlevels(drop.levels(FacetVariable)) > 1) {
-              if (input$model == "Linear") {
-                myModel <- lm(YVariable ~ XVariable + ColorVariable + FacetVariable + XVariable * ColorVariable +
-                                XVariable * FacetVariable + ColorVariable * FacetVariable)
-              } else if (input$model == "Quadratic") {
-                myModel <- lm(YVariable ~ XVariable + I(XVariable^2) + ColorVariable + FacetVariable +
-                                XVariable * ColorVariable + XVariable * FacetVariable +
-                                I(XVariable^2) * ColorVariable + I(XVariable^2) * FacetVariable +
-                                ColorVariable * FacetVariable)
-              } else if (input$model == "Cubic") {
-                myModel <- lm(YVariable ~ XVariable + I(XVariable^2) + I(XVariable^3) + ColorVariable + FacetVariable +
-                                XVariable * ColorVariable + XVariable * FacetVariable +
-                                I(XVariable^2) * ColorVariable + I(XVariable^2) * FacetVariable +
-                                I(XVariable^3) * ColorVariable + I(XVariable^3) * FacetVariable +
-                                ColorVariable * FacetVariable)
-              }
-              # Adding predicted values column for Linear/Quadratic/Cubic
-              plotData <- cbind(plotData, predict(myModel, interval = "confidence"))
-            }
           }
         }
+        
+        # Remove Interaction checkbox it NOT selected
+      } else {
+        # Facet option is none
+        if (input$facet == "None") {
+          if (input$model == "Linear") {
+            myModel <- lm(YVariable ~ (XVariable + ColorVariable + XVariable * ColorVariable))
+          } else if (input$model == "Quadratic") {
+            myModel <- lm(YVariable ~ XVariable + I(XVariable^2) + ColorVariable + XVariable * ColorVariable +
+                            I(XVariable^2) * ColorVariable)
+          } else if (input$model == "Cubic") {
+            myModel <- lm(YVariable ~ XVariable + I(XVariable^2) + I(XVariable^3) + ColorVariable +
+                            XVariable * ColorVariable + I(XVariable^2) * ColorVariable +
+                            I(XVariable^3) * ColorVariable)
+          }
+          # Adding predicted values column for Linear/Quadratic/Cubic
+          plotData <- cbind(plotData, predict(myModel, interval = "confidence"))
+          
+          # Facet option is NOT none
+        } else {
+          # Pulling Facet Variable
+          FacetVariable <- plotData %>% pull(input$facet)
+          
+          # More than one level for facet variable is needed to run the model
+          if (nlevels(drop.levels(FacetVariable)) > 1) {
+            if (input$model == "Linear") {
+              myModel <- lm(YVariable ~ XVariable + ColorVariable + FacetVariable + XVariable * ColorVariable +
+                              XVariable * FacetVariable + ColorVariable * FacetVariable)
+            } else if (input$model == "Quadratic") {
+              myModel <- lm(YVariable ~ XVariable + I(XVariable^2) + ColorVariable + FacetVariable +
+                              XVariable * ColorVariable + XVariable * FacetVariable +
+                              I(XVariable^2) * ColorVariable + I(XVariable^2) * FacetVariable +
+                              ColorVariable * FacetVariable)
+            } else if (input$model == "Cubic") {
+              myModel <- lm(YVariable ~ XVariable + I(XVariable^2) + I(XVariable^3) + ColorVariable + FacetVariable +
+                              XVariable * ColorVariable + XVariable * FacetVariable +
+                              I(XVariable^2) * ColorVariable + I(XVariable^2) * FacetVariable +
+                              I(XVariable^3) * ColorVariable + I(XVariable^3) * FacetVariable +
+                              ColorVariable * FacetVariable)
+            }
+            # Adding predicted values column for Linear/Quadratic/Cubic
+            plotData <- cbind(plotData, predict(myModel, interval = "confidence"))
+          }
+        }
+      }
     } # build model
     
     
@@ -265,7 +276,7 @@ server <- function(input, output, session) {
       geom_point() +
       xlab(input$xvar) + ylab(input$yvar) + 
       labs(title = paste("Plot of ", input$yvar, "by", input$xvar))
-      
+    
     
     
     # Color by
@@ -285,15 +296,15 @@ server <- function(input, output, session) {
       # Model Option - Linear
       if (input$model == "Linear") {
         myplot <- myplot + stat_smooth(method = "lm", formula = y ~ x, se = FALSE)
-      # Model Option - Quadratic
+        # Model Option - Quadratic
       } else if (input$model == "Quadratic") {
         myplot <- myplot + stat_smooth(method = "lm", formula = y ~ x + I(x^2), se = FALSE)
-      # Model Option - Cubic
+        # Model Option - Cubic
       } else if (input$model == "Cubic") {
         myplot <- myplot + stat_smooth(method = "lm", formula = y ~ x + I(x^2) + I(x^3), se = FALSE)
       }
-
-    # If remove interaction checkbox is selected
+      
+      # If remove interaction checkbox is selected
     } else if (input$model != "None" && input$interaction == TRUE) {
       myplot <- myplot + geom_line(aes(y = fit), size = 1)
     } else {
@@ -360,10 +371,11 @@ server <- function(input, output, session) {
   
   output$plotCode <- renderText({
     req(plotCode())
+    req(input$showCode)
     plotCode()  # Display the dynamically generated R code for plotting
   }) 
   
-
+  
   
   # Residual plot --------------------------------------------------------------
   residualsCode <- reactive({
@@ -411,6 +423,7 @@ server <- function(input, output, session) {
   # Output the residuals code as text
   output$residualsCode <- renderText({
     req(residualsCode())
+    req(input$showCode)
     residualsCode()
   })
   
